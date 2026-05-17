@@ -22,11 +22,11 @@ Without that environment variable, the smoke test is skipped.
 ```moonbit check
 ///|
 test "construct DeepSeek client" {
-  let client = @client.Client("test-key", model=@deepseek.V4Pro)
+  let client = @client.Client("test-key", model=V4Pro)
   inspect(client.model, content="deepseek-v4-pro")
   assert_eq(client.api_url, "https://api.deepseek.com/chat/completions")
 
-  let message = @deepseek.ChatMessage(@deepseek.User, "ping")
+  let message = @deepseek.ChatMessage(User, "ping")
   inspect(message.role, content="user")
   assert_eq(message.content, "ping")
 }

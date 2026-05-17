@@ -27,20 +27,20 @@ async fn main {
   let task = values(matches, "task").join(" ")
   let client = @client.Client(api_key, model~)
   let messages : Array[@deepseek.ChatMessage] = [
-    @deepseek.ChatMessage(@deepseek.System, system_prompt),
-    @deepseek.ChatMessage(@deepseek.User, task),
+    ChatMessage(System, system_prompt),
+    ChatMessage(User, task),
   ]
   for step in 0..<max_steps {
     println("--- step \{step + 1} ---")
     let response = client.chat(messages, json_response=true)
     println("agent: \{response.content}")
     print_usage(response.usage)
-    messages.push(@deepseek.ChatMessage(@deepseek.Assistant, response.content))
+    messages.push(ChatMessage(Assistant, response.content))
     let action_json = @json.parse(response.content) catch {
       _ => {
         messages.push(
-          @deepseek.ChatMessage(
-            @deepseek.User,
+          ChatMessage(
+            User,
             "error: reply was not valid JSON. Reply with exactly one JSON object.",
           ),
         )
@@ -48,12 +48,7 @@ async fn main {
       }
     }
     guard field(action_json, "action") is Some(String(action)) else {
-      messages.push(
-        @deepseek.ChatMessage(
-          @deepseek.User,
-          "error: missing string field action",
-        ),
-      )
+      messages.push(ChatMessage(User, "error: missing string field action"))
       continue
     }
     let args = match field(action_json, "args") {
@@ -71,25 +66,25 @@ async fn main {
     }
     let result = dispatch(action, args)
     println("tool: \{result}")
-    messages.push(@deepseek.ChatMessage(@deepseek.User, result))
+    messages.push(ChatMessage(User, result))
   }
   println("=== max steps exhausted ===")
 }
 
 ///|
 fn cli_command() -> @argparse.Command {
-  @argparse.Command(
+  Command(
     "openseek",
     about="DeepSeek-backed MoonBit coding agent.",
     options=[
-      @argparse.OptionArg(
+      OptionArg(
         "api-key",
         long="api-key",
         env="DEEPSEEK",
         required=true,
         about="DeepSeek API key.",
       ),
-      @argparse.OptionArg(
+      OptionArg(
         "model",
         long="model",
         env="DEEPSEEK_MODEL",
@@ -98,9 +93,9 @@ fn cli_command() -> @argparse.Command {
       ),
     ],
     positionals=[
-      @argparse.PositionArg(
+      PositionArg(
         "task",
-        num_args=@argparse.ValueRange(lower=1),
+        num_args=ValueRange(lower=1),
         allow_hyphen_values=true,
         about="Task description.",
       ),

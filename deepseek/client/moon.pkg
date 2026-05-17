@@ -8,4 +8,6 @@ import {
   "moonbitlang/core/env",
 } for "test"
 
+warnings = "+unnecessary_annotation"
+
 supported_targets = "+native"

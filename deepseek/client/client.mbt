@@ -2,7 +2,7 @@
 let default_api_url : String = "https://api.deepseek.com/chat/completions"
 
 ///|
-let default_model : @deepseek.Model = @deepseek.V4Flash
+let default_model : @deepseek.Model = V4Flash
 
 ///|
 /// HTTP client for the DeepSeek chat completions API.

@@ -21,16 +21,13 @@ The HTTP client lives in `bobzhang/openseek/deepseek/client`.
 ```moonbit check
 ///|
 test "encode chat request values" {
-  let message = @deepseek.ChatMessage(@deepseek.User, "write a MoonBit test")
-  inspect(@deepseek.V4Flash, content="deepseek-v4-flash")
+  let message = @deepseek.ChatMessage(User, "write a MoonBit test")
+  let model : @deepseek.Model = V4Flash
+  inspect(model, content="deepseek-v4-flash")
   inspect(message.role, content="user")
   assert_eq(message.content, "write a MoonBit test")
 
-  let body = @deepseek.encode_chat_request(
-    @deepseek.V4Flash,
-    [message],
-    json_response=true,
-  )
+  let body = @deepseek.encode_chat_request(model, [message], json_response=true)
   assert_true(body.stringify().contains("\"json_object\""))
 }
 ```
