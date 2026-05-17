@@ -6,12 +6,9 @@ priv struct ToolResult {
 
 ///|
 async fn execute_tool_call(call : AgentToolCall) -> ToolResult {
-  match call.name {
-    "shell" => execute_shell(call.arguments)
-    "read" => execute_read(call.arguments)
-    "write" => execute_write(call.arguments)
-    "finish" => execute_finish(call.arguments)
-    other => continue_result("error: unknown tool \{other}")
+  match find_tool(call.name) {
+    Some(tool) => tool.execute.run(call.arguments)
+    None => continue_result("error: unknown tool \{call.name}")
   }
 }
 
