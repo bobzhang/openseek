@@ -1,0 +1,11 @@
+import {
+  "bobzhang/openseek/deepseek",
+  "bobzhang/openseek/deepseek/client",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/core/json",
+}
+
+warnings = "+unnecessary_annotation"
+
+supported_targets = "+native"
