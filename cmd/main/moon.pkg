@@ -1,0 +1,7 @@
+// import {
+//   "bobzhang/openseek" @lib,
+// }
+
+options(
+  "is-main": true,
+)
