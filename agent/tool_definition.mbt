@@ -15,9 +15,11 @@ fn system_prompt() -> String {
 
 ///|
 fn function_tools() -> Array[@deepseek.FunctionTool] {
-  tool_definitions().map(fn(tool) {
-    FunctionTool(tool.name, tool.description, tool.schema)
-  })
+  [
+    for tool in tool_definitions() => {
+      FunctionTool(tool.name, tool.description, tool.schema)
+    }
+  ]
 }
 
 ///|

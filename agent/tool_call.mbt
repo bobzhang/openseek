@@ -1,6 +1,18 @@
 ///|
+/// Agent-local executable form of a native `@deepseek.ToolCall`.
+///
+/// `@deepseek.ToolCall` is the protocol value returned by the API: it keeps the
+/// DeepSeek `id` and raw JSON argument string so the assistant tool-call message
+/// and later `Tool(id)` result message can preserve the wire format. Once the
+/// agent is ready to dispatch a local tool, `AgentToolCall` keeps only the tool
+/// name and parsed `Json` arguments. The original id stays on the native call
+/// used by the conversation loop when it appends the tool result message.
 priv struct AgentToolCall {
+  /// Local tool name selected by DeepSeek, such as `shell`, `read`, `write`, or
+  /// `finish`.
   name : String
+  /// Parsed JSON arguments for the selected local tool. Dispatchers validate the
+  /// required fields for each tool before execution.
   arguments : Json
 }
 

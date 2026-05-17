@@ -27,8 +27,14 @@ pub fn FunctionTool::FunctionTool(
 /// `arguments` is the raw JSON string returned by DeepSeek and should be parsed
 /// and validated by the caller before executing a local function.
 pub struct ToolCall {
+  /// The DeepSeek-generated tool call id. Use it as the `tool_call_id` when
+  /// sending the corresponding `Tool(id)` result message back to the API.
   id : String
+  /// The function name requested by the model, matching one of the provided
+  /// `FunctionTool.name` values.
   name : String
+  /// The raw JSON argument string returned by DeepSeek for this function call.
+  /// Parse and validate it before executing a local tool.
   arguments : String
 } derive(Debug)
 
