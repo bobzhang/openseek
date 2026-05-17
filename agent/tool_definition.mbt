@@ -63,16 +63,18 @@ fn object_schema(
   properties : Map[String, Json],
   required : Array[String],
 ) -> Json {
-  Json::object({
-    "type": Json::string("object"),
+  {
+    "type": "object",
     "properties": Json::object(properties),
-    "required": Json::array(required.map(name => Json::string(name))),
-  })
+    "required": [
+      for name in required => name
+    ],
+  }
 }
 
 ///|
 fn string_schema() -> Json {
-  Json::object({ "type": Json::string("string") })
+  { "type": "string" }
 }
 
 ///|
