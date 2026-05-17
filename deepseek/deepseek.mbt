@@ -2,19 +2,60 @@
 let default_api_url : String = "https://api.deepseek.com/chat/completions"
 
 ///|
-let default_model : String = "deepseek-v4-flash"
+let default_model : Model = V4Flash
+
+///|
+pub(all) enum Model {
+  V4Flash
+  V4Pro
+} derive(Eq)
+
+///|
+pub fn Model::to_string(self : Model) -> String {
+  match self {
+    V4Flash => "deepseek-v4-flash"
+    V4Pro => "deepseek-v4-pro"
+  }
+}
+
+///|
+pub fn Model::parse(input : String) -> Model raise {
+  match input {
+    "deepseek-v4-flash" => V4Flash
+    "deepseek-v4-pro" => V4Pro
+    other => fail("unknown DeepSeek model: \{other}")
+  }
+}
+
+///|
+pub(all) enum Role {
+  System
+  User
+  Assistant
+  Tool(String)
+} derive(Eq)
+
+///|
+pub fn Role::to_string(self : Role) -> String {
+  match self {
+    System => "system"
+    User => "user"
+    Assistant => "assistant"
+    Tool(_) => "tool"
+  }
+}
 
 ///|
 pub struct Client {
   priv api_key : String
-  model : String
+  model : Model
   api_url : String
 }
 
 ///|
-pub fn Client::new(
+pub fn Client::Client(
   api_key : String,
-  model? : String = default_model,
+  model? : Model = default_model,
   api_url? : String = default_api_url,
 ) -> Client {
   { api_key, model, api_url }
@@ -22,33 +63,49 @@ pub fn Client::new(
 
 ///|
 pub struct ChatMessage {
-  role : String
+  role : Role
   content : String
 }
 
 ///|
-pub fn ChatMessage::new(role : String, content : String) -> ChatMessage {
+pub fn ChatMessage::ChatMessage(role : Role, content : String) -> ChatMessage {
   { role, content }
 }
 
 ///|
 pub fn ChatMessage::system(content : String) -> ChatMessage {
-  { role: "system", content }
+  ChatMessage(System, content)
 }
 
 ///|
 pub fn ChatMessage::user(content : String) -> ChatMessage {
-  { role: "user", content }
+  ChatMessage(User, content)
 }
 
 ///|
 pub fn ChatMessage::assistant(content : String) -> ChatMessage {
-  { role: "assistant", content }
+  ChatMessage(Assistant, content)
+}
+
+///|
+pub fn ChatMessage::tool(
+  tool_call_id : String,
+  content : String,
+) -> ChatMessage {
+  ChatMessage(Tool(tool_call_id), content)
 }
 
 ///|
 fn ChatMessage::to_json(self : ChatMessage) -> Json {
-  { "role": self.role, "content": self.content }
+  let fields : Map[String, Json] = {
+    "role": self.role.to_string(),
+    "content": self.content,
+  }
+  match self.role {
+    Tool(tool_call_id) => fields.set("tool_call_id", Json::string(tool_call_id))
+    _ => ()
+  }
+  Json::object(fields)
 }
 
 ///|
@@ -108,12 +165,12 @@ pub async fn Client::chat(
 
 ///|
 fn request_body(
-  model : String,
+  model : Model,
   messages : Array[ChatMessage],
   json_response~ : Bool,
 ) -> Json {
   let fields : Map[String, Json] = Map([
-    ("model", Json::string(model)),
+    ("model", Json::string(model.to_string())),
     ("messages", Json::array(messages.map(message => message.to_json()))),
     ("stream", Json::boolean(false)),
   ])
@@ -121,6 +178,30 @@ fn request_body(
     fields.set("response_format", { "type": "json_object" })
   }
   Json::object(fields)
+}
+
+///|
+test "request body can request json output" {
+  let body = request_body(
+    V4Flash,
+    [ChatMessage::system("json only"), ChatMessage::user("ping")],
+    json_response=true,
+  )
+  let text = body.stringify()
+  assert_true(text.contains("\"response_format\""))
+  assert_true(text.contains("\"json_object\""))
+}
+
+///|
+test "tool messages include tool call id" {
+  let body = request_body(
+    V4Pro,
+    [ChatMessage::tool("call_123", "tool result")],
+    json_response=false,
+  )
+  let text = body.stringify()
+  assert_true(text.contains("\"role\":\"tool\""))
+  assert_true(text.contains("\"tool_call_id\":\"call_123\""))
 }
 
 ///|
@@ -143,6 +224,23 @@ fn parse_chat_response(text : String) -> ChatResponse raise {
     None => Usage::empty()
   }
   { content, usage }
+}
+
+///|
+test "parse chat response extracts content and usage" {
+  let response = parse_chat_response(
+    (
+      #|{"choices":[{"message":{"content":"{\"action\":\"finish\",\"args\":{\"answer\":\"ok\"}}"}}],"usage":{"prompt_tokens":10,"completion_tokens":4,"total_tokens":14,"prompt_cache_hit_tokens":7,"prompt_cache_miss_tokens":3}}
+    ),
+  )
+  assert_eq(
+    response.content,
+    "{\"action\":\"finish\",\"args\":{\"answer\":\"ok\"}}",
+  )
+  assert_eq(response.usage.prompt_tokens, 10)
+  assert_eq(response.usage.completion_tokens, 4)
+  assert_eq(response.usage.prompt_cache_hit_tokens, 7)
+  assert_eq(response.usage.prompt_cache_miss_tokens, 3)
 }
 
 ///|

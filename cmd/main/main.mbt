@@ -21,19 +21,11 @@ let system_prompt : String =
 
 ///|
 async fn main {
-  guard @env.get_env_var("DEEPSEEK") is Some(api_key) && api_key != "" else {
-    fail("DEEPSEEK environment variable is not set")
-  }
-  let argv = @env.args()
-  guard argv.length() > 1 else {
-    fail("usage: moon run cmd/main -- <task description>")
-  }
-  let model = match @env.get_env_var("DEEPSEEK_MODEL") {
-    Some(model) if model != "" => model
-    _ => "deepseek-v4-flash"
-  }
-  let task = argv[1:].join(" ")
-  let client = @deepseek.Client::new(api_key, model~)
+  let matches = cli_command().parse(env=@env.get_env_vars())
+  let api_key = value(matches, "api-key")
+  let model = @deepseek.Model::parse(value(matches, "model"))
+  let task = values(matches, "task").join(" ")
+  let client = @deepseek.Client(api_key, model~)
   let messages : Array[@deepseek.ChatMessage] = [
     @deepseek.ChatMessage::system(system_prompt),
     @deepseek.ChatMessage::user(task),
@@ -78,6 +70,66 @@ async fn main {
     messages.push(@deepseek.ChatMessage::user(result))
   }
   println("=== max steps exhausted ===")
+}
+
+///|
+fn cli_command() -> @argparse.Command {
+  @argparse.Command(
+    "openseek",
+    about="DeepSeek-backed MoonBit coding agent.",
+    options=[
+      @argparse.OptionArg(
+        "api-key",
+        long="api-key",
+        env="DEEPSEEK",
+        required=true,
+        about="DeepSeek API key.",
+      ),
+      @argparse.OptionArg(
+        "model",
+        long="model",
+        env="DEEPSEEK_MODEL",
+        default_values=[@deepseek.V4Flash.to_string()],
+        about="DeepSeek model: deepseek-v4-flash or deepseek-v4-pro.",
+      ),
+    ],
+    positionals=[
+      @argparse.PositionArg(
+        "task",
+        num_args=@argparse.ValueRange(lower=1),
+        allow_hyphen_values=true,
+        about="Task description.",
+      ),
+    ],
+  )
+}
+
+///|
+fn value(matches : @argparse.Matches, name : String) -> String raise {
+  match matches.values.get(name) {
+    Some([value]) => value
+    Some(values) if values.length() > 0 => values[0]
+    _ => fail("missing parsed argument: \{name}")
+  }
+}
+
+///|
+fn values(matches : @argparse.Matches, name : String) -> Array[String] raise {
+  match matches.values.get(name) {
+    Some(values) => values
+    None => fail("missing parsed argument: \{name}")
+  }
+}
+
+///|
+test "cli parses env backed options and task" {
+  let parsed = cli_command().parse(argv=["write", "MoonBit"], env={
+    "DEEPSEEK": "test-key",
+    "DEEPSEEK_MODEL": "deepseek-v4-pro",
+  })
+  assert_eq(value(parsed, "api-key"), "test-key")
+  assert_eq(value(parsed, "model"), "deepseek-v4-pro")
+  assert_eq(values(parsed, "task").join(" "), "write MoonBit")
 }
 
 ///|
