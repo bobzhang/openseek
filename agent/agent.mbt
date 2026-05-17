@@ -2,24 +2,6 @@
 let max_steps : Int = 20
 
 ///|
-let system_prompt : String =
-  #|You are OpenSeek, a small MoonBit coding agent.
-  #|Reply with exactly one JSON object and no markdown:
-  #|{"action":"shell","args":{"cmd":"moon check"}}
-  #|{"action":"read","args":{"path":"moon.mod.json"}}
-  #|{"action":"write","args":{"path":"file.mbt","content":"..."}}
-  #|{"action":"finish","args":{"answer":"..."}}
-  #|
-  #|Tools:
-  #|shell: run args.cmd through sh -c and receive exit code plus output.
-  #|read: read args.path as text.
-  #|write: overwrite args.path with args.content.
-  #|finish: end the task with args.answer.
-  #|
-  #|Prefer small MoonBit changes. Use ///| block separators. Run moon check or
-  #|moon test before finish when code changed.
-
-///|
 /// Runs the OpenSeek agent loop for a single task.
 pub async fn run(
   api_key : String,
@@ -28,7 +10,7 @@ pub async fn run(
 ) -> Unit {
   let client = @client.Client(api_key~, model~)
   let messages : Array[@deepseek.ChatMessage] = [
-    ChatMessage(System, system_prompt),
+    ChatMessage(System, system_prompt()),
     ChatMessage(User, task),
   ]
   for step in 0..<max_steps {
@@ -42,94 +24,29 @@ pub async fn run(
         messages.push(
           ChatMessage(
             User,
-            "error: reply was not valid JSON. Reply with exactly one JSON object.",
+            "error: reply was not valid JSON. Reply with exactly one JSON tool call object.",
           ),
         )
         continue
       }
     }
-    guard action_json is Object(action_fields) else {
-      messages.push(ChatMessage(User, "error: missing string field action"))
-      continue
-    }
-    guard action_fields.get("action") is Some(String(action)) else {
-      messages.push(ChatMessage(User, "error: missing string field action"))
-      continue
-    }
-    let args = match action_fields.get("args") {
-      Some(args) => args
-      None => Json::object(Map([]))
-    }
-    if action == "finish" {
-      let answer = match args {
-        Object(args_fields) =>
-          match args_fields.get("answer") {
-            Some(String(answer)) => answer
-            _ => ""
-          }
-        _ => ""
+    let tool_call = match ToolCall::from_json(action_json) {
+      Ok(tool_call) => tool_call
+      Err(error) => {
+        messages.push(ChatMessage(User, "error: \{error}"))
+        continue
       }
+    }
+    let result = execute_tool_call(tool_call)
+    if result.finished {
       println("=== finished ===")
-      println(answer)
+      println(result.output)
       return
     }
-    let result = dispatch(action, args)
-    println("tool: \{result}")
-    messages.push(ChatMessage(User, result))
+    println("tool: \{result.output}")
+    messages.push(ChatMessage(User, result.output))
   }
   println("=== max steps exhausted ===")
-}
-
-///|
-async fn dispatch(action : String, args : Json) -> String {
-  match action {
-    "shell" => {
-      guard args is Object(args_fields) else {
-        return "error: shell requires args.cmd"
-      }
-      guard args_fields.get("cmd") is Some(String(cmd)) else {
-        return "error: shell requires args.cmd"
-      }
-      shell(cmd) catch {
-        error => "error running shell: \{error}"
-      }
-    }
-    "read" => {
-      guard args is Object(args_fields) else {
-        return "error: read requires args.path"
-      }
-      guard args_fields.get("path") is Some(String(path)) else {
-        return "error: read requires args.path"
-      }
-      @fs.read_file(path).text() catch {
-        error => "error reading \{path}: \{error}"
-      }
-    }
-    "write" => {
-      guard args is Object(args_fields) else {
-        return "error: write requires args.path and args.content"
-      }
-      guard args_fields.get("path") is Some(String(path)) else {
-        return "error: write requires args.path and args.content"
-      }
-      guard args_fields.get("content") is Some(String(content)) else {
-        return "error: write requires args.path and args.content"
-      }
-      try {
-        @fs.write_file(path, content, create_mode=CreateOrTruncate)
-        "ok: wrote \{content.length()} chars to \{path}"
-      } catch {
-        error => "error writing \{path}: \{error}"
-      }
-    }
-    other => "error: unknown action \{other}"
-  }
-}
-
-///|
-async fn shell(cmd : String) -> String {
-  let (code, output) = @process.collect_output_merged("sh", ["-c", cmd])
-  "exit=\{code}\n\{output.text()}"
 }
 
 ///|

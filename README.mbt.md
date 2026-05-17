@@ -21,14 +21,15 @@ The `deepseek/client` subpackage exposes the HTTP client:
 
 It depends on `moonbitlang/async/http` and is native-only.
 
-The `agent` subpackage contains the OpenSeek agent loop and local tool
-dispatch. It depends on `deepseek/client`, filesystem, and process APIs.
+The `agent` subpackage contains the OpenSeek agent loop plus modular local
+tool-call parsing, simple JSON schemas for each tool, and tool dispatch. It
+depends on `deepseek/client`, filesystem, and process APIs.
 
 ## Agent CLI
 
 The `cmd/main` package is the CLI entry point. It parses arguments and runs the
-agent package. The agent asks DeepSeek for one JSON action per turn and supports
-four actions: `shell`, `read`, `write`, and `finish`.
+agent package. The agent asks DeepSeek for one JSON tool call per turn and
+supports four tools: `shell`, `read`, `write`, and `finish`.
 
 ```bash
 export DEEPSEEK=sk-...
