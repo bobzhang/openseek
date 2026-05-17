@@ -46,7 +46,7 @@ pub async fn Client::chat(
   let body = @deepseek.encode_chat_request(self.model, messages, json_response~)
   let (resp, data) = @http.post(self.api_url, body, headers={
     "Content-Type": "application/json",
-    "Authorization": "Bearer " + self.api_key,
+    "Authorization": "Bearer \{self.api_key}",
   })
   let text = data.text()
   guard resp.code >= 200 && resp.code < 300 else {
