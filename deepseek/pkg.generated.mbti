@@ -14,12 +14,15 @@ pub fn decode_chat_response(String) -> ChatResponse raise
 pub struct ChatMessage {
   role : Role
   content : String
+  tool_calls : Array[ToolCall]
 } derive(@debug.Debug)
 pub fn ChatMessage::ChatMessage(Role, String) -> Self
+pub fn ChatMessage::assistant_tool_calls(Array[ToolCall]) -> Self
 pub impl ToJson for ChatMessage
 
 pub struct ChatResponse {
   content : String
+  tool_calls : Array[ToolCall]
   usage : Usage
 } derive(@debug.Debug)
 
@@ -27,9 +30,19 @@ pub struct Conversation {
   model : Model
   messages : Array[ChatMessage]
   json_response : Bool
+  tools : Array[FunctionTool]
 } derive(@debug.Debug)
-pub fn Conversation::Conversation(Model, Array[ChatMessage], json_response? : Bool) -> Self
+pub fn Conversation::Conversation(Model, Array[ChatMessage], json_response? : Bool, tools? : Array[FunctionTool]) -> Self
 pub impl ToJson for Conversation
+
+pub struct FunctionTool {
+  name : String
+  description : String
+  parameters : Json
+  strict : Bool
+} derive(@debug.Debug)
+pub fn FunctionTool::FunctionTool(String, String, Json, strict? : Bool) -> Self
+pub impl ToJson for FunctionTool
 
 pub(all) enum Model {
   V4Flash
@@ -45,6 +58,14 @@ pub(all) enum Role {
   Tool(String)
 } derive(Eq, @debug.Debug)
 pub impl Show for Role
+
+pub struct ToolCall {
+  id : String
+  name : String
+  arguments : String
+} derive(@debug.Debug)
+pub fn ToolCall::ToolCall(String, String, String) -> Self
+pub impl ToJson for ToolCall
 
 pub struct Usage {
   prompt_tokens : Int

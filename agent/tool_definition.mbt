@@ -8,25 +8,16 @@ priv struct ToolDefinition {
 ///|
 fn system_prompt() -> String {
   [
-    "You are OpenSeek, a small MoonBit coding agent.",
-    "Reply with exactly one JSON tool call object and no markdown.",
-    "Use this shape: {\"tool\":\"shell\",\"arguments\":{\"cmd\":\"moon check\"}}",
-    "Use finish when the task is complete: {\"tool\":\"finish\",\"arguments\":{\"answer\":\"...\"}}",
-    "",
-    "Tools:",
-    tools_prompt(),
-    "",
-    "Prefer small MoonBit changes. Use ///| block separators. Run moon check or moon test before finish when code changed.",
+    "You are OpenSeek, a small MoonBit coding agent.", "Use the provided tools when you need to inspect or modify the workspace.",
+    "Use finish when the task is complete.", "Prefer small MoonBit changes. Use ///| block separators. Run moon check or moon test before finish when code changed.",
   ].join("\n")
 }
 
 ///|
-fn tools_prompt() -> String {
-  tool_definitions()
-  .map(fn(tool) {
-    "- \{tool.name}: \{tool.description}\n  schema: \{tool.schema.stringify()}"
+fn function_tools() -> Array[@deepseek.FunctionTool] {
+  tool_definitions().map(fn(tool) {
+    FunctionTool(tool.name, tool.description, tool.schema)
   })
-  .join("\n")
 }
 
 ///|
@@ -78,9 +69,12 @@ fn string_schema() -> Json {
 }
 
 ///|
-test "tool prompt includes json schemas" {
-  let prompt = tools_prompt()
-  assert_true(prompt.contains("shell"))
-  assert_true(prompt.contains("\"required\""))
-  assert_true(prompt.contains("\"cmd\""))
+test "function tools include json schemas" {
+  let tools = function_tools()
+  assert_eq(tools.length(), 4)
+  let text = ToJson::to_json(tools).stringify()
+  assert_true(text.contains("\"type\":\"function\""))
+  assert_true(text.contains("\"name\":\"shell\""))
+  assert_true(text.contains("\"required\""))
+  assert_true(text.contains("\"cmd\""))
 }

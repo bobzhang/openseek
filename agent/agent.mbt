@@ -15,36 +15,37 @@ pub async fn run(
   ]
   for step in 0..<max_steps {
     println("--- step \{step + 1} ---")
-    let response = client.chat(messages, json_response=true)
-    println("agent: \{response.content}")
+    let response = client.chat(messages, tools=function_tools())
+    if response.content != "" {
+      println("agent: \{response.content}")
+    }
     print_usage(response.usage)
-    messages.push(ChatMessage(Assistant, response.content))
-    let action_json = @json.parse(response.content) catch {
-      _ => {
-        messages.push(
-          ChatMessage(
-            User,
-            "error: reply was not valid JSON. Reply with exactly one JSON tool call object.",
-          ),
-        )
-        continue
-      }
-    }
-    let tool_call = match ToolCall::from_json(action_json) {
-      Ok(tool_call) => tool_call
-      Err(error) => {
-        messages.push(ChatMessage(User, "error: \{error}"))
-        continue
-      }
-    }
-    let result = execute_tool_call(tool_call)
-    if result.finished {
+    if response.tool_calls.length() == 0 {
       println("=== finished ===")
-      println(result.output)
+      println(response.content)
       return
     }
-    println("tool: \{result.output}")
-    messages.push(ChatMessage(User, result.output))
+    messages.push(
+      @deepseek.ChatMessage::assistant_tool_calls(response.tool_calls),
+    )
+    for native_call in response.tool_calls {
+      let tool_call = match AgentToolCall::from_deepseek(native_call) {
+        Ok(tool_call) => tool_call
+        Err(error) => {
+          println("tool: error: \{error}")
+          messages.push(ChatMessage(Tool(native_call.id), "error: \{error}"))
+          continue
+        }
+      }
+      let result = execute_tool_call(tool_call)
+      if result.finished {
+        println("=== finished ===")
+        println(result.output)
+        return
+      }
+      println("tool: \{result.output}")
+      messages.push(ChatMessage(Tool(native_call.id), result.output))
+    }
   }
   println("=== max steps exhausted ===")
 }

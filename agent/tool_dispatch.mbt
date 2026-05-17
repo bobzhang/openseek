@@ -5,7 +5,7 @@ priv struct ToolResult {
 }
 
 ///|
-async fn execute_tool_call(call : ToolCall) -> ToolResult {
+async fn execute_tool_call(call : AgentToolCall) -> ToolResult {
   match call.name {
     "shell" => execute_shell(call.arguments)
     "read" => execute_read(call.arguments)

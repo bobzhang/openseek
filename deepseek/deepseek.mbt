@@ -55,12 +55,21 @@ pub impl Show for Role with to_string(self : Role) -> String {
 pub struct ChatMessage {
   role : Role
   content : String
+  tool_calls : Array[ToolCall]
 } derive(Debug)
 
 ///|
 /// Constructs a typed chat message.
 pub fn ChatMessage::ChatMessage(role : Role, content : String) -> ChatMessage {
-  { role, content }
+  { role, content, tool_calls: [] }
+}
+
+///|
+/// Constructs an assistant message that records model-requested tool calls.
+pub fn ChatMessage::assistant_tool_calls(
+  tool_calls : Array[ToolCall],
+) -> ChatMessage {
+  { role: Assistant, content: "", tool_calls }
 }
 
 ///|
@@ -71,6 +80,7 @@ pub struct Conversation {
   model : Model
   messages : Array[ChatMessage]
   json_response : Bool
+  tools : Array[FunctionTool]
 } derive(Debug)
 
 ///|
@@ -79,8 +89,9 @@ pub fn Conversation::Conversation(
   model : Model,
   messages : Array[ChatMessage],
   json_response? : Bool = false,
+  tools? : Array[FunctionTool] = [],
 ) -> Conversation {
-  { model, messages, json_response }
+  { model, messages, json_response, tools }
 }
 
 ///|
@@ -97,5 +108,6 @@ pub struct Usage {
 /// Decoded DeepSeek chat response content and token usage.
 pub struct ChatResponse {
   content : String
+  tool_calls : Array[ToolCall]
   usage : Usage
 } derive(Debug)

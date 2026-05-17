@@ -11,8 +11,8 @@ The package depends on `moonbitlang/async/http` and is native-only.
 
 - `Client(api_key~, model?, api_url?)`: configure the API key, typed model, and
   optional endpoint override.
-- `Client::chat(messages, json_response?)`: send typed chat messages and decode
-  the response.
+- `Client::chat(messages, json_response?, tools?)`: send typed chat messages,
+  optionally with native DeepSeek function tools, and decode the response.
 
 `Client` implements `Debug` with the API key redacted.
 

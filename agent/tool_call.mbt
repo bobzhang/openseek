@@ -1,22 +1,17 @@
 ///|
-priv struct ToolCall {
+priv struct AgentToolCall {
   name : String
   arguments : Json
 }
 
 ///|
-fn ToolCall::from_json(json : Json) -> Result[ToolCall, String] {
-  guard json is Object(fields) else {
-    return Err("tool call must be a JSON object")
+fn AgentToolCall::from_deepseek(
+  call : @deepseek.ToolCall,
+) -> Result[AgentToolCall, String] {
+  let arguments = @json.parse(call.arguments) catch {
+    _ => return Err("\{call.name} arguments are not valid JSON")
   }
-  guard fields.get("tool") is Some(String(name)) else {
-    return Err("tool call is missing string field tool")
-  }
-  let arguments = match fields.get("arguments") {
-    Some(arguments) => arguments
-    None => Json::object(Map([]))
-  }
-  Ok({ name, arguments })
+  Ok({ name: call.name, arguments })
 }
 
 ///|
@@ -35,17 +30,21 @@ fn required_string_argument(
 }
 
 ///|
-test "parse tool call json" {
-  let call_json = @json.parse(
-    (
-      #|{"tool":"shell","arguments":{"cmd":"moon check"}}
-    ),
+test "parse native tool call arguments" {
+  let parsed = AgentToolCall::from_deepseek(
+    ToolCall("call_123", "shell", "{\"cmd\":\"moon check\"}"),
   )
-  let parsed = ToolCall::from_json(call_json)
   guard parsed is Ok(call) else { fail("tool call did not parse") }
   assert_eq(call.name, "shell")
   guard required_string_argument(call.arguments, "shell", "cmd") is Ok(cmd) else {
     fail("missing cmd")
   }
   assert_eq(cmd, "moon check")
+}
+
+///|
+test "reject invalid native tool call arguments" {
+  let parsed = AgentToolCall::from_deepseek(ToolCall("call_123", "shell", "{"))
+  guard parsed is Err(error) else { fail("invalid arguments parsed") }
+  assert_true(error.contains("shell arguments are not valid JSON"))
 }

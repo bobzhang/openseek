@@ -37,14 +37,16 @@ pub fn Client::Client(
 ///|
 /// Sends typed chat messages to DeepSeek and decodes the response.
 ///
-/// Set `json_response=true` to request a JSON object response format.
+/// Set `json_response=true` to request a JSON object response format. Pass
+/// `tools` to enable native DeepSeek function tool calls.
 pub async fn Client::chat(
   self : Client,
   messages : Array[@deepseek.ChatMessage],
   json_response? : Bool = false,
+  tools? : Array[@deepseek.FunctionTool] = [],
 ) -> @deepseek.ChatResponse {
   let body = ToJson::to_json(
-    @deepseek.Conversation(self.model, messages, json_response~),
+    @deepseek.Conversation(self.model, messages, json_response~, tools~),
   )
   let (resp, data) = @http.post(self.api_url, body, headers={
     "Content-Type": "application/json",

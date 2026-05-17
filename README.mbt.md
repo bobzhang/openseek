@@ -8,7 +8,8 @@ The `deepseek` subpackage exposes pure chat data and JSON helpers:
 
 - `Model` and `Role`
 - `ChatMessage(role, content)` with strongly typed `Role` values
-- `Conversation(model, messages, json_response?)` with `ToJson` request encoding
+- `FunctionTool(name, description, parameters, strict?)` for native tool calls
+- `Conversation(model, messages, json_response?, tools?)` with `ToJson` request encoding
 - `decode_chat_response(...)`
 
 It has no HTTP dependency and is suitable for blackbox tests and portable
@@ -17,19 +18,19 @@ request/response handling.
 The `deepseek/client` subpackage exposes the HTTP client:
 
 - `Client(api_key~, model?, api_url?)`
-- `Client::chat(messages, json_response?)`
+- `Client::chat(messages, json_response?, tools?)`
 
 It depends on `moonbitlang/async/http` and is native-only.
 
 The `agent` subpackage contains the OpenSeek agent loop plus modular local
-tool-call parsing, simple JSON schemas for each tool, and tool dispatch. It
+tool definitions, native DeepSeek tool-call handling, and tool dispatch. It
 depends on `deepseek/client`, filesystem, and process APIs.
 
 ## Agent CLI
 
 The `cmd/main` package is the CLI entry point. It parses arguments and runs the
-agent package. The agent asks DeepSeek for one JSON tool call per turn and
-supports four tools: `shell`, `read`, `write`, and `finish`.
+agent package. The agent sends DeepSeek native function tools and supports four
+local tools: `shell`, `read`, `write`, and `finish`.
 
 ```bash
 export DEEPSEEK=sk-...
