@@ -1,10 +1,20 @@
 # bobzhang/openseek
 
-OpenSeek is a small MoonBit foundation for a DeepSeek-backed coding agent.
+OpenSeek is a small MoonBit foundation for a DeepSeek-backed coding agent. The
+module is split into pure data, HTTP transport, agent orchestration, and a CLI
+entry point so request encoding can be tested without network access.
 
 ## Packages
 
-The `deepseek` subpackage exposes pure chat data and JSON helpers:
+| Package | Purpose | Docs |
+| --- | --- | --- |
+| `bobzhang/openseek` | Root package and module overview. | `README.mbt.md` |
+| `bobzhang/openseek/deepseek` | Pure DeepSeek chat data, JSON encoding, and response decoding. | `deepseek/README.mbt.md` |
+| `bobzhang/openseek/deepseek/client` | Native-only HTTP transport for DeepSeek chat completions. | `deepseek/client/README.mbt.md` |
+| `bobzhang/openseek/agent` | Native-only OpenSeek agent loop and local tool dispatch. | `agent/README.mbt.md` |
+| `bobzhang/openseek/cmd/main` | Native-only command-line entry point. | `cmd/main/README.md` |
+
+The `deepseek` subpackage is pure and exposes chat data plus JSON helpers:
 
 - `Model` and `Role`
 - `ChatMessage(role, content)` with strongly typed `Role` values
@@ -22,9 +32,9 @@ The `deepseek/client` subpackage exposes the HTTP client:
 
 It depends on `moonbitlang/async/http` and is native-only.
 
-The `agent` subpackage contains the OpenSeek agent loop plus modular local
-tool definitions, native DeepSeek tool-call handling, and tool dispatch. It
-depends on `deepseek/client`, filesystem, and process APIs.
+The `agent` subpackage contains the OpenSeek agent loop, native DeepSeek
+tool-call handling, and local tool dispatch. It depends on `deepseek/client`,
+filesystem, and process APIs.
 
 ## Agent CLI
 
@@ -39,5 +49,5 @@ moon run cmd/main -- "inspect this project and finish with a short summary"
 
 `DEEPSEEK_MODEL` is optional and defaults to `deepseek-v4-flash`.
 
-See `deepseek/README.mbt.md` and `deepseek/client/README.mbt.md` for checked
-API examples.
+See each package README for API boundaries, examples, and package-specific test
+notes.
