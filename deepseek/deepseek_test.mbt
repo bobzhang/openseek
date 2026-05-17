@@ -12,10 +12,16 @@ test "chat message constructor" {
 }
 
 ///|
-test "client defaults" {
-  let client = @deepseek.Client("test-key")
-  assert_eq(client.model.to_string(), "deepseek-v4-flash")
-  assert_eq(client.api_url, "https://api.deepseek.com/chat/completions")
+test "chat request encoding" {
+  let body = @deepseek.encode_chat_request(
+    @deepseek.V4Flash,
+    [@deepseek.ChatMessage(@deepseek.User, "hello")],
+    json_response=true,
+  )
+  let text = body.stringify()
+  assert_true(text.contains("\"model\":\"deepseek-v4-flash\""))
+  assert_true(text.contains("\"role\":\"user\""))
+  assert_true(text.contains("\"response_format\""))
 }
 
 ///|

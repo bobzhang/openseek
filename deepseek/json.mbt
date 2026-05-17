@@ -34,10 +34,12 @@ fn Usage::empty() -> Usage {
 }
 
 ///|
-fn request_body(
+/// Encodes typed chat request values into the DeepSeek chat completions JSON
+/// request body.
+pub fn encode_chat_request(
   model : Model,
   messages : Array[ChatMessage],
-  json_response~ : Bool,
+  json_response? : Bool = false,
 ) -> Json {
   let fields : Map[String, Json] = Map([
     ("model", Json::string(model.to_string())),
@@ -52,7 +54,7 @@ fn request_body(
 
 ///|
 test "request body can request json output" {
-  let body = request_body(
+  let body = encode_chat_request(
     V4Flash,
     [ChatMessage(System, "json only"), ChatMessage(User, "ping")],
     json_response=true,
@@ -64,7 +66,7 @@ test "request body can request json output" {
 
 ///|
 test "tool messages include tool call id" {
-  let body = request_body(
+  let body = encode_chat_request(
     V4Pro,
     [ChatMessage(Tool("call_123"), "tool result")],
     json_response=false,
@@ -75,7 +77,10 @@ test "tool messages include tool call id" {
 }
 
 ///|
-fn parse_chat_response(text : String) -> ChatResponse raise {
+/// Decodes a DeepSeek chat completions JSON response body.
+///
+/// Missing usage information is represented as zero token counts.
+pub fn decode_chat_response(text : String) -> ChatResponse raise {
   let parsed = @json.parse(text)
   guard field(parsed, "choices") is Some(Array(choices)) else {
     fail("DeepSeek response is missing choices: \{text}")
@@ -98,7 +103,7 @@ fn parse_chat_response(text : String) -> ChatResponse raise {
 
 ///|
 test "parse chat response extracts content and usage" {
-  let response = parse_chat_response(
+  let response = decode_chat_response(
     (
       #|{"choices":[{"message":{"content":"{\"action\":\"finish\",\"args\":{\"answer\":\"ok\"}}"}}],"usage":{"prompt_tokens":10,"completion_tokens":4,"total_tokens":14,"prompt_cache_hit_tokens":7,"prompt_cache_miss_tokens":3}}
     ),

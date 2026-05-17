@@ -25,7 +25,7 @@ async fn main {
   let api_key = value(matches, "api-key")
   let model = @deepseek.Model::parse(value(matches, "model"))
   let task = values(matches, "task").join(" ")
-  let client = @deepseek.Client(api_key, model~)
+  let client = @client.Client(api_key, model~)
   let messages : Array[@deepseek.ChatMessage] = [
     @deepseek.ChatMessage(@deepseek.System, system_prompt),
     @deepseek.ChatMessage(@deepseek.User, task),

@@ -1,0 +1,11 @@
+import {
+  "bobzhang/openseek/deepseek",
+  "moonbitlang/async/http",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/env",
+} for "test"
+
+supported_targets = "+native"

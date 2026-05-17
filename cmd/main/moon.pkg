@@ -1,5 +1,6 @@
 import {
   "bobzhang/openseek/deepseek",
+  "bobzhang/openseek/deepseek/client",
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/process",

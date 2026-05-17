@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/deepseek/client"
+
+import {
+  "bobzhang/openseek/deepseek",
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Client {
+  model : @deepseek.Model
+  api_url : String
+  // private fields
+}
+pub fn Client::Client(String, model? : @deepseek.Model, api_url? : String) -> Self
+pub async fn Client::chat(Self, Array[@deepseek.ChatMessage], json_response? : Bool) -> @deepseek.ChatResponse
+pub impl @debug.Debug for Client
+
+// Type aliases
+
+// Traits

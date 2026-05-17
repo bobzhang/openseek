@@ -1,11 +1,3 @@
 import {
-  "moonbitlang/async/http",
   "moonbitlang/core/json",
 }
-
-import {
-  "moonbitlang/async",
-  "moonbitlang/core/env",
-} for "test"
-
-supported_targets = "+native"

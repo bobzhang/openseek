@@ -1,7 +1,14 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "bobzhang/openseek/deepseek"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
+pub fn decode_chat_response(String) -> ChatResponse raise
+
+pub fn encode_chat_request(Model, Array[ChatMessage], json_response? : Bool) -> Json
 
 // Errors
 
@@ -9,26 +16,18 @@ package "bobzhang/openseek/deepseek"
 pub struct ChatMessage {
   role : Role
   content : String
-}
+} derive(@debug.Debug)
 pub fn ChatMessage::ChatMessage(Role, String) -> Self
 
 pub struct ChatResponse {
   content : String
   usage : Usage
-}
-
-pub struct Client {
-  model : Model
-  api_url : String
-  // private fields
-}
-pub fn Client::Client(String, model? : Model, api_url? : String) -> Self
-pub async fn Client::chat(Self, Array[ChatMessage], json_response? : Bool) -> ChatResponse
+} derive(@debug.Debug)
 
 pub(all) enum Model {
   V4Flash
   V4Pro
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub fn Model::parse(String) -> Self raise
 pub impl Show for Model
 
@@ -37,7 +36,7 @@ pub(all) enum Role {
   User
   Assistant
   Tool(String)
-} derive(Eq)
+} derive(Eq, @debug.Debug)
 pub impl Show for Role
 
 pub struct Usage {
@@ -46,7 +45,7 @@ pub struct Usage {
   total_tokens : Int
   prompt_cache_hit_tokens : Int
   prompt_cache_miss_tokens : Int
-}
+} derive(@debug.Debug)
 
 // Type aliases
 
