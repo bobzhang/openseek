@@ -5,10 +5,11 @@ async test "realworld DeepSeek API smoke test" {
       let client = @deepseek.Client(api_key)
       let response = client.chat(
         [
-          @deepseek.ChatMessage::system(
+          @deepseek.ChatMessage(
+            @deepseek.System,
             "Reply with exactly this JSON object and no markdown: {\"answer\":\"pong\"}",
           ),
-          @deepseek.ChatMessage::user("ping"),
+          @deepseek.ChatMessage(@deepseek.User, "ping"),
         ],
         json_response=true,
       )

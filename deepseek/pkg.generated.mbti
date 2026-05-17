@@ -11,10 +11,6 @@ pub struct ChatMessage {
   content : String
 }
 pub fn ChatMessage::ChatMessage(Role, String) -> Self
-pub fn ChatMessage::assistant(String) -> Self
-pub fn ChatMessage::system(String) -> Self
-pub fn ChatMessage::tool(String, String) -> Self
-pub fn ChatMessage::user(String) -> Self
 
 pub struct ChatResponse {
   content : String
@@ -34,7 +30,7 @@ pub(all) enum Model {
   V4Pro
 } derive(Eq)
 pub fn Model::parse(String) -> Self raise
-pub fn Model::to_string(Self) -> String
+pub impl Show for Model
 
 pub(all) enum Role {
   System
@@ -42,7 +38,7 @@ pub(all) enum Role {
   Assistant
   Tool(String)
 } derive(Eq)
-pub fn Role::to_string(Self) -> String
+pub impl Show for Role
 
 pub struct Usage {
   prompt_tokens : Int

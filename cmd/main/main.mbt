@@ -27,19 +27,20 @@ async fn main {
   let task = values(matches, "task").join(" ")
   let client = @deepseek.Client(api_key, model~)
   let messages : Array[@deepseek.ChatMessage] = [
-    @deepseek.ChatMessage::system(system_prompt),
-    @deepseek.ChatMessage::user(task),
+    @deepseek.ChatMessage(@deepseek.System, system_prompt),
+    @deepseek.ChatMessage(@deepseek.User, task),
   ]
   for step in 0..<max_steps {
     println("--- step \{step + 1} ---")
     let response = client.chat(messages, json_response=true)
     println("agent: \{response.content}")
     print_usage(response.usage)
-    messages.push(@deepseek.ChatMessage::assistant(response.content))
+    messages.push(@deepseek.ChatMessage(@deepseek.Assistant, response.content))
     let action_json = @json.parse(response.content) catch {
       _ => {
         messages.push(
-          @deepseek.ChatMessage::user(
+          @deepseek.ChatMessage(
+            @deepseek.User,
             "error: reply was not valid JSON. Reply with exactly one JSON object.",
           ),
         )
@@ -48,7 +49,10 @@ async fn main {
     }
     guard field(action_json, "action") is Some(String(action)) else {
       messages.push(
-        @deepseek.ChatMessage::user("error: missing string field action"),
+        @deepseek.ChatMessage(
+          @deepseek.User,
+          "error: missing string field action",
+        ),
       )
       continue
     }
@@ -67,7 +71,7 @@ async fn main {
     }
     let result = dispatch(action, args)
     println("tool: \{result}")
-    messages.push(@deepseek.ChatMessage::user(result))
+    messages.push(@deepseek.ChatMessage(@deepseek.User, result))
   }
   println("=== max steps exhausted ===")
 }

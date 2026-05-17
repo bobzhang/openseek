@@ -4,9 +4,9 @@ OpenSeek is a small MoonBit foundation for a DeepSeek-backed coding agent.
 
 The `deepseek` subpackage exposes a tiny DeepSeek chat client:
 
-- `Client::new(api_key, model?, api_url?)`
+- `Client(api_key, model?, api_url?)`
 - `Client::chat(messages, json_response?)`
-- `ChatMessage::system`, `ChatMessage::user`, and `ChatMessage::assistant`
+- `ChatMessage(role, content)` with strongly typed `Role` values
 
 The first runnable agent lives in `cmd/main`. It asks DeepSeek for one JSON
 action per turn and supports four actions: `shell`, `read`, `write`, and
