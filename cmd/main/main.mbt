@@ -33,21 +33,21 @@ async fn main {
     _ => "deepseek-v4-flash"
   }
   let task = argv[1:].join(" ")
-  let client = @openseek.Client::new(api_key, model~)
-  let messages : Array[@openseek.ChatMessage] = [
-    @openseek.ChatMessage::system(system_prompt),
-    @openseek.ChatMessage::user(task),
+  let client = @deepseek.Client::new(api_key, model~)
+  let messages : Array[@deepseek.ChatMessage] = [
+    @deepseek.ChatMessage::system(system_prompt),
+    @deepseek.ChatMessage::user(task),
   ]
   for step in 0..<max_steps {
     println("--- step \{step + 1} ---")
     let response = client.chat(messages, json_response=true)
     println("agent: \{response.content}")
     print_usage(response.usage)
-    messages.push(@openseek.ChatMessage::assistant(response.content))
+    messages.push(@deepseek.ChatMessage::assistant(response.content))
     let action_json = @json.parse(response.content) catch {
       _ => {
         messages.push(
-          @openseek.ChatMessage::user(
+          @deepseek.ChatMessage::user(
             "error: reply was not valid JSON. Reply with exactly one JSON object.",
           ),
         )
@@ -56,7 +56,7 @@ async fn main {
     }
     guard field(action_json, "action") is Some(String(action)) else {
       messages.push(
-        @openseek.ChatMessage::user("error: missing string field action"),
+        @deepseek.ChatMessage::user("error: missing string field action"),
       )
       continue
     }
@@ -75,7 +75,7 @@ async fn main {
     }
     let result = dispatch(action, args)
     println("tool: \{result}")
-    messages.push(@openseek.ChatMessage::user(result))
+    messages.push(@deepseek.ChatMessage::user(result))
   }
   println("=== max steps exhausted ===")
 }
@@ -132,7 +132,7 @@ fn field(json : Json, key : String) -> Json? {
 }
 
 ///|
-fn print_usage(usage : @openseek.Usage) -> Unit {
+fn print_usage(usage : @deepseek.Usage) -> Unit {
   println(
     "usage: prompt=\{usage.prompt_tokens} completion=\{usage.completion_tokens} cache_hit=\{usage.prompt_cache_hit_tokens} cache_miss=\{usage.prompt_cache_miss_tokens}",
   )

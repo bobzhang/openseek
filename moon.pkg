@@ -1,6 +1,1 @@
-import {
-  "moonbitlang/async/http",
-  "moonbitlang/core/json",
-}
 
-supported_targets = "+native"

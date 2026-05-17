@@ -2,7 +2,7 @@
 
 OpenSeek is a small MoonBit foundation for a DeepSeek-backed coding agent.
 
-The root package exposes a tiny DeepSeek chat client:
+The `deepseek` subpackage exposes a tiny DeepSeek chat client:
 
 - `Client::new(api_key, model?, api_url?)`
 - `Client::chat(messages, json_response?)`
@@ -18,3 +18,5 @@ moon run cmd/main -- "inspect this project and finish with a short summary"
 ```
 
 `DEEPSEEK_MODEL` is optional and defaults to `deepseek-v4-flash`.
+
+See `deepseek/README.mbt.md` for a checked API example.
