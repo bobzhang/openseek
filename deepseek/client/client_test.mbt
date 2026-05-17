@@ -8,7 +8,14 @@ test "client defaults" {
 ///|
 test "client debug redacts api key" {
   let client = @client.Client(api_key="test-key")
-  let rendered = to_repr(client).to_string()
-  assert_true(rendered.contains("<redacted>"))
-  assert_false(rendered.contains("test-key"))
+  debug_inspect(
+    client,
+    content=(
+      #|{
+      #|  api_key: ...,
+      #|  model: V4Flash,
+      #|  api_url: "https://api.deepseek.com/chat/completions",
+      #|}
+    ),
+  )
 }

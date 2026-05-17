@@ -5,21 +5,15 @@ let default_api_url : String = "https://api.deepseek.com/chat/completions"
 let default_model : @deepseek.Model = V4Flash
 
 ///|
-/// HTTP client for the DeepSeek chat completions API.
-pub struct Client {
-  priv api_key : String
-  model : @deepseek.Model
-  api_url : String
-}
+type API_KEY = String
 
 ///|
-pub impl Debug for Client with to_repr(self : Client) -> Repr {
-  Repr::record({
-    "api_key": Repr::string("<redacted>"),
-    "model": to_repr(self.model),
-    "api_url": to_repr(self.api_url),
-  })
-}
+/// HTTP client for the DeepSeek chat completions API.
+pub struct Client {
+  priv api_key : API_KEY
+  model : @deepseek.Model
+  api_url : String
+} derive(Debug(ignore=API_KEY))
 
 ///|
 /// Constructs a DeepSeek HTTP client.
