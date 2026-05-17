@@ -1,6 +1,13 @@
-// import {
-//   "bobzhang/openseek" @lib,
-// }
+import {
+  "bobzhang/openseek" @openseek,
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/process",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "+native"
 
 options(
   "is-main": true,

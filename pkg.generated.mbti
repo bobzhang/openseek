@@ -1,0 +1,42 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek"
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct ChatMessage {
+  role : String
+  content : String
+}
+pub fn ChatMessage::assistant(String) -> Self
+pub fn ChatMessage::new(String, String) -> Self
+pub fn ChatMessage::system(String) -> Self
+pub fn ChatMessage::user(String) -> Self
+
+pub struct ChatResponse {
+  content : String
+  usage : Usage
+}
+
+pub struct Client {
+  model : String
+  api_url : String
+  // private fields
+}
+pub async fn Client::chat(Self, Array[ChatMessage], json_response? : Bool) -> ChatResponse
+pub fn Client::new(String, model? : String, api_url? : String) -> Self
+
+pub struct Usage {
+  prompt_tokens : Int
+  completion_tokens : Int
+  total_tokens : Int
+  prompt_cache_hit_tokens : Int
+  prompt_cache_miss_tokens : Int
+}
+
+// Type aliases
+
+// Traits
+
