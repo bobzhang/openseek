@@ -26,7 +26,7 @@ pub async fn run(
   model : @deepseek.Model,
   task : String,
 ) -> Unit {
-  let client = @client.Client(api_key, model~)
+  let client = @client.Client(api_key~, model~)
   let messages : Array[@deepseek.ChatMessage] = [
     ChatMessage(System, system_prompt),
     ChatMessage(User, task),

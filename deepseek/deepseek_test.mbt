@@ -13,10 +13,12 @@ test "chat message constructor" {
 
 ///|
 test "chat request encoding" {
-  let body = @deepseek.encode_chat_request(
-    V4Flash,
-    [ChatMessage(User, "hello")],
-    json_response=true,
+  let body = ToJson::to_json(
+    @deepseek.Conversation(
+      V4Flash,
+      [ChatMessage(User, "hello")],
+      json_response=true,
+    ),
   )
   let text = body.stringify()
   assert_true(text.contains("\"model\":\"deepseek-v4-flash\""))

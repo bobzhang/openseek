@@ -27,7 +27,7 @@ pub impl Debug for Client with to_repr(self : Client) -> Repr {
 /// `model` defaults to `deepseek-v4-flash`; `api_url` defaults to the DeepSeek
 /// chat completions endpoint.
 pub fn Client::Client(
-  api_key : String,
+  api_key~ : String,
   model? : @deepseek.Model = default_model,
   api_url? : String = default_api_url,
 ) -> Client {
@@ -43,7 +43,9 @@ pub async fn Client::chat(
   messages : Array[@deepseek.ChatMessage],
   json_response? : Bool = false,
 ) -> @deepseek.ChatResponse {
-  let body = @deepseek.encode_chat_request(self.model, messages, json_response~)
+  let body = ToJson::to_json(
+    @deepseek.Conversation(self.model, messages, json_response~),
+  )
   let (resp, data) = @http.post(self.api_url, body, headers={
     "Content-Type": "application/json",
     "Authorization": "Bearer \{self.api_key}",

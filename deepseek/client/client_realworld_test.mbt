@@ -1,10 +1,13 @@
 ///|
 async test "realworld DeepSeek API smoke test" {
   guard @env.get_env_var("DEEPSEEK") is Some(api_key) && api_key != "" else {
+    println(
+      "DEEPSEEK environment variable is not set or is empty; skipping realworld API smoke test",
+    )
     return
   }
 
-  let client = @client.Client(api_key)
+  let client = @client.Client(api_key~)
   let response = client.chat(json_response=true) <| [
       ChatMessage(
         System,

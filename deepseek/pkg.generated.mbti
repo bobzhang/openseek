@@ -8,8 +8,6 @@ import {
 // Values
 pub fn decode_chat_response(String) -> ChatResponse raise
 
-pub fn encode_chat_request(Model, Array[ChatMessage], json_response? : Bool) -> Json
-
 // Errors
 
 // Types and methods
@@ -24,6 +22,14 @@ pub struct ChatResponse {
   content : String
   usage : Usage
 } derive(@debug.Debug)
+
+pub struct Conversation {
+  model : Model
+  messages : Array[ChatMessage]
+  json_response : Bool
+} derive(@debug.Debug)
+pub fn Conversation::Conversation(Model, Array[ChatMessage], json_response? : Bool) -> Self
+pub impl ToJson for Conversation
 
 pub(all) enum Model {
   V4Flash

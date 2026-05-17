@@ -12,6 +12,29 @@ pub impl ToJson for ChatMessage with to_json(self : ChatMessage) -> Json {
 }
 
 ///|
+pub impl ToJson for Conversation with to_json(self : Conversation) -> Json {
+  Json::object(
+    Map(
+      [
+        ("model", Json::string(self.model.to_string())),
+        ("messages", ToJson::to_json(self.messages)),
+        ("stream", Json::boolean(false)),
+        ..if self.json_response {
+          [
+            (
+              "response_format",
+              Json::object({ "type": Json::string("json_object") }),
+            ),
+          ]
+        } else {
+          []
+        },
+      ],
+    ),
+  )
+}
+
+///|
 fn Usage::from_json(json : Json) -> Usage {
   let fields = match json {
     Object(fields) => fields
@@ -53,40 +76,13 @@ fn Usage::empty() -> Usage {
 }
 
 ///|
-/// Encodes typed chat request values into the DeepSeek chat completions JSON
-/// request body.
-pub fn encode_chat_request(
-  model : Model,
-  messages : Array[ChatMessage],
-  json_response? : Bool = false,
-) -> Json {
-  Json::object(
-    Map(
-      [
-        ("model", Json::string(model.to_string())),
-        ("messages", ToJson::to_json(messages)),
-        ("stream", Json::boolean(false)),
-        ..if json_response {
-          [
-            (
-              "response_format",
-              Json::object({ "type": Json::string("json_object") }),
-            ),
-          ]
-        } else {
-          []
-        },
-      ],
-    ),
-  )
-}
-
-///|
 test "request body can request json output" {
-  let body = encode_chat_request(
-    V4Flash,
-    [ChatMessage(System, "json only"), ChatMessage(User, "ping")],
-    json_response=true,
+  let body = ToJson::to_json(
+    Conversation(
+      V4Flash,
+      [ChatMessage(System, "json only"), ChatMessage(User, "ping")],
+      json_response=true,
+    ),
   )
   let text = body.stringify()
   assert_true(text.contains("\"response_format\""))
@@ -103,11 +99,24 @@ test "request body can request json output" {
 }
 
 ///|
+test "conversation encodes chat request body" {
+  let body = ToJson::to_json(
+    Conversation(V4Flash, [ChatMessage(User, "hello")], json_response=true),
+  )
+  let text = body.stringify()
+  assert_true(text.contains("\"model\":\"deepseek-v4-flash\""))
+  assert_true(text.contains("\"messages\""))
+  assert_true(text.contains("\"response_format\""))
+}
+
+///|
 test "tool messages include tool call id" {
-  let body = encode_chat_request(
-    V4Pro,
-    [ChatMessage(Tool("call_123"), "tool result")],
-    json_response=false,
+  let body = ToJson::to_json(
+    Conversation(
+      V4Pro,
+      [ChatMessage(Tool("call_123"), "tool result")],
+      json_response=false,
+    ),
   )
   let text = body.stringify()
   assert_true(text.contains("\"role\":\"tool\""))
