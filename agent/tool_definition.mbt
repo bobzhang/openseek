@@ -1,5 +1,5 @@
 ///|
-priv struct ToolDefinition {
+priv struct AgentToolDefinition {
   name : String
   description : String
   schema : Json
@@ -21,16 +21,16 @@ async fn ToolExecutor::run(self : ToolExecutor, arguments : Json) -> ToolResult 
 }
 
 ///|
-fn function_tools() -> Array[@deepseek.FunctionTool] {
+fn function_tools() -> Array[@deepseek.ToolDefinition] {
   [
     for tool in tool_definitions() => {
-      FunctionTool(tool.name, tool.description, tool.schema)
+      ToolDefinition(tool.name, tool.description, tool.schema)
     }
   ]
 }
 
 ///|
-fn find_tool(name : String) -> ToolDefinition? {
+fn find_tool(name : String) -> AgentToolDefinition? {
   for tool in tool_definitions() {
     if tool.name == name {
       return Some(tool)
@@ -40,7 +40,7 @@ fn find_tool(name : String) -> ToolDefinition? {
 }
 
 ///|
-fn tool_definitions() -> Array[ToolDefinition] {
+fn tool_definitions() -> Array[AgentToolDefinition] {
   [
     {
       name: "shell",

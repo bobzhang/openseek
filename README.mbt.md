@@ -18,7 +18,7 @@ The `deepseek` subpackage is pure and exposes chat data plus JSON helpers:
 
 - `Model` and `Role`
 - `ChatMessage(role, content)` with strongly typed `Role` values
-- `FunctionTool(name, description, parameters, strict?)` for native tool calls
+- `ToolDefinition(name, description, parameters, strict?)` for native tool calls
 - `Conversation(model, messages, json_response?, tools?)` with `ToJson` request encoding
 - `decode_chat_response(...)`
 

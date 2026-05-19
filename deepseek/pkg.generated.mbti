@@ -31,21 +31,12 @@ pub struct Conversation {
   model : Model
   messages : Array[ChatMessage]
   json_response : Bool
-  tools : Array[FunctionTool]
+  tools : Array[ToolDefinition]
   thinking : ThinkingMode?
   reasoning_effort : ReasoningEffort?
 } derive(@debug.Debug)
-pub fn Conversation::Conversation(Model, Array[ChatMessage], json_response? : Bool, tools? : Array[FunctionTool], thinking? : ThinkingMode?, reasoning_effort? : ReasoningEffort?) -> Self
+pub fn Conversation::Conversation(Model, Array[ChatMessage], json_response? : Bool, tools? : Array[ToolDefinition], thinking? : ThinkingMode?, reasoning_effort? : ReasoningEffort?) -> Self
 pub impl ToJson for Conversation
-
-pub struct FunctionTool {
-  name : String
-  description : String
-  parameters : Json
-  strict : Bool
-} derive(@debug.Debug)
-pub fn FunctionTool::FunctionTool(String, String, Json, strict? : Bool) -> Self
-pub impl ToJson for FunctionTool
 
 pub(all) enum Model {
   V4Flash
@@ -81,6 +72,15 @@ pub struct ToolCall {
 } derive(@debug.Debug)
 pub fn ToolCall::ToolCall(id~ : String, name~ : String, arguments~ : String) -> Self
 pub impl ToJson for ToolCall
+
+pub struct ToolDefinition {
+  name : String
+  description : String
+  parameters : Json
+  strict : Bool
+} derive(@debug.Debug)
+pub fn ToolDefinition::ToolDefinition(String, String, Json, strict? : Bool) -> Self
+pub impl ToJson for ToolDefinition
 
 pub struct Usage {
   prompt_tokens : Int

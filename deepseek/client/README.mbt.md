@@ -62,7 +62,7 @@ test "construct DeepSeek client" {
 ///|
 test "prepare tool-enabled client request values" {
   let client = @client.Client(api_key="test-key")
-  let tool = @deepseek.FunctionTool("read", "Read a file.", {
+  let tool = @deepseek.ToolDefinition("read", "Read a file.", {
     "type": "object",
     "properties": { "path": { "type": "string" } },
     "required": ["path"],

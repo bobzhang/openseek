@@ -18,7 +18,7 @@ The HTTP client lives in `bobzhang/openseek/deepseek/client`.
   message constructor with `ToJson` for DeepSeek wire encoding. Use `Assistant`
   with `tool_calls` for the assistant message that must be sent back after
   DeepSeek requests native tool calls.
-- `FunctionTool(name, description, parameters, strict?)`: a native DeepSeek
+- `ToolDefinition(name, description, parameters, strict?)`: a native DeepSeek
   function tool definition with a JSON Schema parameters object.
 - `ToolCall(id~, name~, arguments~)`: a decoded function call request from the
   model; `arguments` is the raw JSON string from the API.
@@ -36,6 +36,25 @@ DeepSeek tool calling uses the same flow described in the
 `tools` with a chat request, read `response.tool_calls`, append the assistant
 tool-call message, execute each local function, then append
 `ChatMessage(Tool(call.id), result)` before the next request.
+
+### `ToolDefinition` vs `ToolCall`
+
+`ToolDefinition` and `ToolCall` are opposite sides of the same protocol step:
+
+| Type | Direction | Meaning |
+| --- | --- | --- |
+| `ToolDefinition` | Your code sends it to DeepSeek in `Conversation.tools`. | A tool definition: name, description, and JSON Schema for arguments. It advertises a function the model may request later. |
+| `ToolCall` | DeepSeek returns it in `ChatResponse.tool_calls`. | A concrete tool invocation request: generated call id, function name, and raw JSON argument string. |
+
+The usual sequence is:
+
+1. Define available tools with `ToolDefinition(...)`.
+2. Send them in `Conversation(..., tools=[...])` or `Client::chat(..., tools=[...])`.
+3. Decode DeepSeek's response into `ToolCall` values.
+4. Append `ChatMessage(Assistant, "", tool_calls=response.tool_calls)` so the
+   conversation records the model's requested calls.
+5. Execute each local function after parsing `ToolCall.arguments`.
+6. Append each result as `ChatMessage(Tool(call.id), result)`.
 
 ```moonbit check
 ///|
@@ -66,7 +85,7 @@ test "encode chat request values" {
 ```moonbit check
 ///|
 test "encode native tool call values" {
-  let tool = @deepseek.FunctionTool("read", "Read a file.", {
+  let tool = @deepseek.ToolDefinition("read", "Read a file.", {
     "type": "object",
     "properties": { "path": { "type": "string" } },
     "required": ["path"],

@@ -110,7 +110,7 @@ pub struct Conversation {
   model : Model
   messages : Array[ChatMessage]
   json_response : Bool
-  tools : Array[FunctionTool]
+  tools : Array[ToolDefinition]
   thinking : ThinkingMode?
   reasoning_effort : ReasoningEffort?
 } derive(Debug)
@@ -121,7 +121,7 @@ pub fn Conversation::Conversation(
   model : Model,
   messages : Array[ChatMessage],
   json_response? : Bool = false,
-  tools? : Array[FunctionTool] = [],
+  tools? : Array[ToolDefinition] = [],
   thinking? : ThinkingMode? = None,
   reasoning_effort? : ReasoningEffort? = None,
 ) -> Conversation {

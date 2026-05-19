@@ -24,7 +24,7 @@ pub impl ToJson for ChatMessage with to_json(self : ChatMessage) -> Json {
 }
 
 ///|
-pub impl ToJson for FunctionTool with to_json(self : FunctionTool) -> Json {
+pub impl ToJson for ToolDefinition with to_json(self : ToolDefinition) -> Json {
   let function_fields : Map[String, Json] = {
     "name": Json::string(self.name),
     "description": Json::string(self.description),
@@ -184,8 +184,8 @@ test "tool messages include tool call id" {
 }
 
 ///|
-test "function tools encode as native DeepSeek tools" {
-  let tool = FunctionTool(
+test "tool definitions encode as native DeepSeek tools" {
+  let tool = ToolDefinition(
     "get_weather",
     "Get weather for a location.",
     {

@@ -45,7 +45,7 @@ test "chat request encoding" {
 
 ///|
 test "native tool request encoding" {
-  let tool = @deepseek.FunctionTool("shell", "Run a shell command.", {
+  let tool = @deepseek.ToolDefinition("shell", "Run a shell command.", {
     "type": "object",
     "properties": { "cmd": { "type": "string" } },
     "required": ["cmd"],

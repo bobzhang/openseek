@@ -42,7 +42,7 @@ pub async fn Client::chat(
   self : Client,
   messages : Array[@deepseek.ChatMessage],
   json_response? : Bool = false,
-  tools? : Array[@deepseek.FunctionTool] = [],
+  tools? : Array[@deepseek.ToolDefinition] = [],
 ) -> @deepseek.ChatResponse {
   let body = ToJson::to_json(
     @deepseek.Conversation(
