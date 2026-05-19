@@ -47,7 +47,7 @@ export DEEPSEEK=sk-...
 moon run cmd/main -- "inspect this project and finish with a short summary"
 ```
 
-`DEEPSEEK_MODEL` is optional and defaults to `deepseek-v4-flash`.
+`DEEPSEEK_MODEL` is optional and defaults to `deepseek-v4-pro`.
 
 See each package README for API boundaries, examples, and package-specific test
 notes.

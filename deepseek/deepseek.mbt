@@ -93,8 +93,13 @@ pub struct ChatMessage {
 
 ///|
 /// Constructs a typed chat message.
-pub fn ChatMessage::ChatMessage(role : Role, content : String) -> ChatMessage {
-  { role, content, tool_calls: [], reasoning_content: None }
+pub fn ChatMessage::ChatMessage(
+  role : Role,
+  content : String,
+  tool_calls? : Array[ToolCall] = [],
+  reasoning_content? : String,
+) -> ChatMessage {
+  { role, content, tool_calls, reasoning_content }
 }
 
 ///|
