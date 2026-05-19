@@ -17,7 +17,7 @@ entry point so request encoding can be tested without network access.
 The `deepseek` subpackage is pure and exposes chat data plus JSON helpers:
 
 - `Model` and `Role`
-- `ChatMessage(role, content)` with strongly typed `Role` values
+- `ChatMessage(role, content=...)` with strongly typed `Role` values
 - `ToolDefinition(name, description, parameters, strict?)` for native tool calls
 - `ChatResponse` with `FromJson` response decoding
 

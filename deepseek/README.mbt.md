@@ -14,7 +14,7 @@ The HTTP client lives in `bobzhang/openseek/deepseek/client`.
   mode (`enabled`/`disabled`) and effort (`high`/`max`).
 - `Role`: `System`, `User`, `Assistant`, and `Tool(tool_call_id)`, with `Show`
   for wire strings and `Debug` for inspection.
-- `ChatMessage(role, content, tool_calls?, reasoning_content?)`: one typed chat
+- `ChatMessage(role, content=..., tool_calls?, reasoning_content?)`: one typed chat
   message constructor with `ToJson` for DeepSeek wire encoding. Use `Assistant`
   with `tool_calls` for the assistant message that must be sent back after
   DeepSeek requests native tool calls.
@@ -32,7 +32,7 @@ DeepSeek tool calling uses the same flow described in the
 [official API docs](https://api-docs.deepseek.com/guides/tool_calls): send
 `tools` with a chat request, read `response.tool_calls`, append the assistant
 tool-call message, execute each local function, then append
-`ChatMessage(Tool(call.id), result)` before the next request.
+`ChatMessage(Tool(call.id), content=result)` before the next request.
 
 ### `ToolDefinition` vs `ToolCall`
 
@@ -48,15 +48,16 @@ The usual sequence is:
 1. Define available tools with `ToolDefinition(...)`.
 2. Send them with `Client::chat(..., tools=[...])`.
 3. Decode DeepSeek's response into `ToolCall` values.
-4. Append `ChatMessage(Assistant, "", tool_calls=response.tool_calls)` so the
-   conversation records the model's requested calls.
+4. Append `ChatMessage(Assistant, content=response.content,
+   tool_calls=response.tool_calls)` so the conversation records the model's
+   requested calls.
 5. Execute each local function after parsing `ToolCall.arguments`.
-6. Append each result as `ChatMessage(Tool(call.id), result)`.
+6. Append each result as `ChatMessage(Tool(call.id), content=result)`.
 
 ```moonbit check
 ///|
 test "encode chat message values" {
-  let message = @deepseek.ChatMessage(User, "write a MoonBit test")
+  let message = @deepseek.ChatMessage(User, content="write a MoonBit test")
   let model : @deepseek.Model = V4Flash
   inspect(model, content="deepseek-v4-flash")
   inspect(message.role, content="user")
@@ -83,7 +84,7 @@ test "encode native tool call values" {
     name="read",
     arguments="{\"path\":\"README.mbt.md\"}",
   )
-  let message = @deepseek.ChatMessage(Assistant, "", tool_calls=[call])
+  let message = @deepseek.ChatMessage(Assistant, content="", tool_calls=[call])
   assert_true(ToJson::to_json(message).stringify().contains("\"tool_calls\""))
 }
 ```

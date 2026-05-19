@@ -1,7 +1,8 @@
 ///|
 pub impl ToJson for ChatMessage with to_json(self : ChatMessage) -> Json {
   let content = match self.role {
-    Assistant if self.tool_calls.length() > 0 => Json::null()
+    Assistant if self.tool_calls.length() > 0 && self.content == "" =>
+      Json::null()
     _ => Json::string(self.content)
   }
   let fields : Map[String, Json] = {
@@ -94,7 +95,9 @@ fn Usage::empty() -> Usage {
 
 ///|
 test "tool messages include tool call id" {
-  let body = ToJson::to_json(ChatMessage(Tool("call_123"), "tool result"))
+  let body = ToJson::to_json(
+    ChatMessage(Tool("call_123"), content="tool result"),
+  )
   let text = body.stringify()
   assert_true(text.contains("\"role\":\"tool\""))
   assert_true(text.contains("\"tool_call_id\":\"call_123\""))
@@ -124,7 +127,7 @@ test "assistant tool call messages encode tool_calls" {
   let body = ToJson::to_json(
     ChatMessage(
       Assistant,
-      "",
+      content="",
       tool_calls=[
         ToolCall(
           id="call_123",
@@ -143,6 +146,22 @@ test "assistant tool call messages encode tool_calls" {
   assert_true(
     text.contains("\"reasoning_content\":\"checked available tools\""),
   )
+}
+
+///|
+test "assistant tool call messages preserve content when present" {
+  let body = ToJson::to_json(
+    ChatMessage(Assistant, content="I will check that now.", tool_calls=[
+      ToolCall(
+        id="call_123",
+        name="get_weather",
+        arguments="{\"location\":\"Hangzhou\"}",
+      ),
+    ]),
+  )
+  let text = body.stringify()
+  assert_true(text.contains("\"content\":\"I will check that now.\""))
+  assert_true(text.contains("\"tool_calls\""))
 }
 
 ///|

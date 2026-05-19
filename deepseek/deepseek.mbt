@@ -82,8 +82,13 @@ pub impl Show for Role with to_string(self : Role) -> String {
 ///|
 /// A typed chat message.
 ///
-/// Construct messages with `ChatMessage(User, "hello")`,
-/// `ChatMessage(System, "...")`, or `ChatMessage(Tool("call_id"), "...")`.
+/// Construct content messages with `ChatMessage(User, content="hello")`,
+/// `ChatMessage(System, content="...")`, or
+/// `ChatMessage(Tool("call_id"), content="...")`.
+/// Assistant tool-call echo messages should pass the assistant response
+/// content explicitly with `ChatMessage(Assistant, content=response.content,
+/// tool_calls=response.tool_calls)`. When that content is empty, it is encoded
+/// with JSON `content: null`.
 pub struct ChatMessage {
   role : Role
   content : String
@@ -95,7 +100,7 @@ pub struct ChatMessage {
 /// Constructs a typed chat message.
 pub fn ChatMessage::ChatMessage(
   role : Role,
-  content : String,
+  content~ : String,
   tool_calls? : Array[ToolCall] = [],
   reasoning_content? : String,
 ) -> ChatMessage {

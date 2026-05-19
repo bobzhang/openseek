@@ -17,7 +17,7 @@ pub struct ChatMessage {
   tool_calls : Array[ToolCall]
   reasoning_content : String?
 } derive(@debug.Debug)
-pub fn ChatMessage::ChatMessage(Role, String, tool_calls? : Array[ToolCall], reasoning_content? : String) -> Self
+pub fn ChatMessage::ChatMessage(Role, content~ : String, tool_calls? : Array[ToolCall], reasoning_content? : String) -> Self
 pub impl ToJson for ChatMessage
 
 pub struct ChatResponse {

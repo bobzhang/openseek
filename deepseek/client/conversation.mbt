@@ -59,8 +59,8 @@ impl ToJson for Conversation with to_json(self : Conversation) -> Json {
 test "conversation always requests json output" {
   let body = ToJson::to_json(
     Conversation(V4Flash, [
-      ChatMessage(System, "json only"),
-      ChatMessage(User, "ping"),
+      ChatMessage(System, content="json only"),
+      ChatMessage(User, content="ping"),
     ]),
   )
   let text = body.stringify()
@@ -85,7 +85,7 @@ test "conversation encodes tool request body" {
     "required": ["cmd"],
   })
   let body = ToJson::to_json(
-    Conversation(V4Flash, [ChatMessage(User, "run tests")], tools=[tool]),
+    Conversation(V4Flash, [ChatMessage(User, content="run tests")], tools=[tool]),
   )
   let text = body.stringify()
   assert_true(text.contains("\"model\":\"deepseek-v4-flash\""))
@@ -101,7 +101,7 @@ test "conversation encodes thinking controls" {
   let body = ToJson::to_json(
     Conversation(
       V4Pro,
-      [ChatMessage(User, "solve")],
+      [ChatMessage(User, content="solve")],
       thinking=Some(Enabled),
       reasoning_effort=Some(Max),
     ),

@@ -25,7 +25,7 @@ It always sends `stream=false` and `response_format={"type":"json_object"}`.
 
 Use `tools=[...]` when the model should call native DeepSeek function tools.
 Tool call results should be appended as `@deepseek.ChatMessage(Tool(call.id),
-text)` before sending the next request.
+content=text)` before sending the next request.
 
 HTTP status codes outside `200..<300` raise with the status code and response
 body. Successful responses are parsed and decoded as `@deepseek.ChatResponse`.
@@ -51,7 +51,7 @@ test "construct DeepSeek client" {
   assert_eq(client.api_url, "https://api.deepseek.com/chat/completions")
   debug_inspect(client.reasoning_effort, content="Some(Max)")
 
-  let message = @deepseek.ChatMessage(User, "ping")
+  let message = @deepseek.ChatMessage(User, content="ping")
   inspect(message.role, content="user")
   assert_eq(message.content, "ping")
 }
@@ -65,7 +65,7 @@ test "prepare tool-enabled client request values" {
     "properties": { "path": { "type": "string" } },
     "required": ["path"],
   })
-  let messages = [@deepseek.ChatMessage(User, "read README.mbt.md")]
+  let messages = [@deepseek.ChatMessage(User, content="read README.mbt.md")]
   let body = ToJson::to_json(tool).stringify()
 
   assert_eq(messages.length(), 1)

@@ -37,8 +37,9 @@ pub fn ToolDefinition::ToolDefinition(
 ///
 /// `ToolCall` is the model's request to execute one previously advertised
 /// `ToolDefinition`. It appears in `ChatResponse.tool_calls` and is echoed back
-/// in an assistant `ChatMessage(Assistant, "", tool_calls=[...])` before
-/// sending the actual tool result as `ChatMessage(Tool(call.id), result)`.
+/// in an assistant `ChatMessage(Assistant, content=response.content,
+/// tool_calls=[...])` before
+/// sending the actual tool result as `ChatMessage(Tool(call.id), content=result)`.
 ///
 /// `arguments` is the raw JSON string returned by DeepSeek and should be parsed
 /// and validated by the caller before executing a local function.

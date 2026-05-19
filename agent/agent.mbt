@@ -15,8 +15,8 @@ pub async fn run(
     reasoning_effort=Some(Max),
   )
   let messages : Array[@deepseek.ChatMessage] = [
-    ChatMessage(System, system_prompt()),
-    ChatMessage(User, task),
+    ChatMessage(System, content=system_prompt()),
+    ChatMessage(User, content=task),
   ]
   for step in 0..<max_steps {
     println("--- step \{step + 1} ---")
@@ -30,23 +30,24 @@ pub async fn run(
       println(response.content)
       return
     }
-    let assistant_message : @deepseek.ChatMessage = if response.reasoning_content ==
-      "" {
-      ChatMessage(Assistant, "", tool_calls=response.tool_calls)
-    } else {
-      ChatMessage(
-        Assistant,
-        "",
-        tool_calls=response.tool_calls,
-        reasoning_content=response.reasoning_content,
-      )
+    let reasoning_content = match response.reasoning_content {
+      "" => None
+      content => Some(content)
     }
+    let assistant_message : @deepseek.ChatMessage = ChatMessage(
+      Assistant,
+      content=response.content,
+      tool_calls=response.tool_calls,
+      reasoning_content?,
+    )
     messages.push(assistant_message)
     for native_call in response.tool_calls {
       let tool_call = AgentToolCall(native_call) catch {
         error => {
           println("tool: error: \{error}")
-          messages.push(ChatMessage(Tool(native_call.id), "error: \{error}"))
+          messages.push(
+            ChatMessage(Tool(native_call.id), content="error: \{error}"),
+          )
           continue
         }
       }
@@ -57,7 +58,7 @@ pub async fn run(
         return
       }
       println("tool: \{result.output}")
-      messages.push(ChatMessage(Tool(native_call.id), result.output))
+      messages.push(ChatMessage(Tool(native_call.id), content=result.output))
     }
   }
   println("=== max steps exhausted ===")
