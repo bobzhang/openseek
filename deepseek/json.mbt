@@ -9,42 +9,58 @@ fn encode_chat_message(message : ChatMessage) -> Json {
       Json::null()
     _ => Json::string(message.content)
   }
-  let fields : Map[String, Json] = {
-    "role": Json::string(message.role.to_string()),
-    "content": content,
-  }
-  match message.role {
-    Tool(tool_call_id) => fields.set("tool_call_id", Json::string(tool_call_id))
-    _ => ()
-  }
-  if message.tool_calls.length() > 0 {
-    fields.set(
-      "tool_calls",
-      Json::array([ for call in message.tool_calls => encode_tool_call(call) ]),
-    )
-  }
-  match message.reasoning_content {
-    Some(reasoning_content) =>
-      fields.set("reasoning_content", Json::string(reasoning_content))
-    None => ()
-  }
-  Json::object(fields)
+  Json::object(
+    Map(
+      [
+        ("role", Json::string(message.role.to_string())),
+        ("content", content),
+        ..match message.role {
+          Tool(tool_call_id) => [("tool_call_id", Json::string(tool_call_id))]
+          _ => []
+        },
+        ..if message.tool_calls.length() > 0 {
+          [
+            (
+              "tool_calls",
+              Json::array(
+                [
+                  for call in message.tool_calls => encode_tool_call(call)
+                ],
+              ),
+            ),
+          ]
+        } else {
+          []
+        },
+        ..match message.reasoning_content {
+          Some(reasoning_content) =>
+            [("reasoning_content", Json::string(reasoning_content))]
+          None => []
+        },
+      ],
+    ),
+  )
 }
 
 ///|
 /// Encodes a `ToolDefinition` as a DeepSeek `tools[]` entry.
 fn encode_tool_definition(tool : ToolDefinition) -> Json {
-  let function_fields : Map[String, Json] = {
-    "name": Json::string(tool.name),
-    "description": Json::string(tool.description),
-    "parameters": tool.parameters,
-  }
-  if tool.strict {
-    function_fields.set("strict", Json::boolean(true))
-  }
   Json::object({
     "type": Json::string("function"),
-    "function": Json::object(function_fields),
+    "function": Json::object(
+      Map(
+        [
+          ("name", Json::string(tool.name)),
+          ("description", Json::string(tool.description)),
+          ("parameters", tool.parameters),
+          ..if tool.strict {
+            [("strict", Json::boolean(true))]
+          } else {
+            []
+          },
+        ],
+      ),
+    ),
   })
 }
 
@@ -73,41 +89,51 @@ pub fn encode_chat_request(
   thinking? : ThinkingMode,
   reasoning_effort? : ReasoningEffort,
 ) -> Json {
-  let fields : Array[(String, Json)] = [
-    ("model", Json::string(model.to_string())),
-    (
-      "messages",
-      Json::array([ for message in messages => encode_chat_message(message) ]),
-    ),
-    ("stream", Json::boolean(false)),
-    ("response_format", Json::object({ "type": Json::string("json_object") })),
-  ]
-  if tools.length() > 0 {
-    fields.push(
-      (
-        "tools",
-        Json::array([ for tool in tools => encode_tool_definition(tool) ]),
-      ),
-    )
-  }
-  match thinking {
-    Some(thinking) =>
-      fields.push(
+  Json::object(
+    Map(
+      [
+        ("model", Json::string(model.to_string())),
         (
-          "thinking",
-          Json::object({ "type": Json::string(thinking.to_string()) }),
+          "messages",
+          Json::array(
+            [
+              for message in messages => encode_chat_message(message)
+            ],
+          ),
         ),
-      )
-    None => ()
-  }
-  match reasoning_effort {
-    Some(reasoning_effort) =>
-      fields.push(
-        ("reasoning_effort", Json::string(reasoning_effort.to_string())),
-      )
-    None => ()
-  }
-  Json::object(Map(fields))
+        ("stream", Json::boolean(false)),
+        (
+          "response_format",
+          Json::object({ "type": Json::string("json_object") }),
+        ),
+        ..if tools.length() > 0 {
+          [
+            (
+              "tools",
+              Json::array([ for tool in tools => encode_tool_definition(tool) ]),
+            ),
+          ]
+        } else {
+          []
+        },
+        ..match thinking {
+          Some(thinking) =>
+            [
+              (
+                "thinking",
+                Json::object({ "type": Json::string(thinking.to_string()) }),
+              ),
+            ]
+          None => []
+        },
+        ..match reasoning_effort {
+          Some(reasoning_effort) =>
+            [("reasoning_effort", Json::string(reasoning_effort.to_string()))]
+          None => []
+        },
+      ],
+    ),
+  )
 }
 
 ///|
