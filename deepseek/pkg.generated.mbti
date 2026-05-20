@@ -7,6 +7,13 @@ import {
 }
 
 // Values
+pub fn encode_chat_message(ChatMessage) -> Json
+
+pub fn encode_chat_request(Model, Array[ChatMessage], tools? : Array[ToolDefinition], thinking? : ThinkingMode, reasoning_effort? : ReasoningEffort) -> Json
+
+pub fn encode_tool_call(ToolCall) -> Json
+
+pub fn encode_tool_definition(ToolDefinition) -> Json
 
 // Errors
 
@@ -18,7 +25,6 @@ pub struct ChatMessage {
   reasoning_content : String?
 } derive(@debug.Debug)
 pub fn ChatMessage::ChatMessage(Role, content~ : String, tool_calls? : Array[ToolCall], reasoning_content? : String) -> Self
-pub impl ToJson for ChatMessage
 
 pub struct ChatResponse {
   content : String
@@ -61,7 +67,6 @@ pub struct ToolCall {
   arguments : String
 } derive(@debug.Debug)
 pub fn ToolCall::ToolCall(id~ : String, name~ : String, arguments~ : String) -> Self
-pub impl ToJson for ToolCall
 pub impl @json.FromJson for ToolCall
 
 pub struct ToolDefinition {
@@ -71,7 +76,6 @@ pub struct ToolDefinition {
   strict : Bool
 } derive(@debug.Debug)
 pub fn ToolDefinition::ToolDefinition(String, String, Json, strict? : Bool) -> Self
-pub impl ToJson for ToolDefinition
 
 pub struct Usage {
   prompt_tokens : Int

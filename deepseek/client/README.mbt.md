@@ -66,7 +66,7 @@ test "prepare tool-enabled client request values" {
     "required": ["path"],
   })
   let messages = [@deepseek.ChatMessage(User, content="read README.mbt.md")]
-  let body = ToJson::to_json(tool).stringify()
+  let body = @deepseek.encode_tool_definition(tool).stringify()
 
   assert_eq(messages.length(), 1)
   assert_true(body.contains("\"type\":\"function\""))

@@ -98,7 +98,11 @@ fn string_schema() -> Json {
 test "function tools include json schemas" {
   let tools = function_tools()
   assert_eq(tools.length(), 4)
-  let text = ToJson::to_json(tools).stringify()
+  let text = Json::array(
+    [
+      for t in tools => @deepseek.encode_tool_definition(t)
+    ],
+  ).stringify()
   assert_true(text.contains("\"type\":\"function\""))
   assert_true(text.contains("\"name\":\"shell\""))
   assert_true(text.contains("\"required\""))

@@ -14,10 +14,13 @@ The HTTP client lives in `bobzhang/openseek/deepseek/client`.
   mode (`enabled`/`disabled`) and effort (`high`/`max`).
 - `Role`: `System`, `User`, `Assistant`, and `Tool(tool_call_id)`, with `Show`
   for wire strings and `Debug` for inspection.
-- `ChatMessage(role, content=..., tool_calls?, reasoning_content?)`: one typed chat
-  message constructor with `ToJson` for DeepSeek wire encoding. Use `Assistant`
-  with `tool_calls` for the assistant message that must be sent back after
-  DeepSeek requests native tool calls.
+- `ChatMessage(role, content=..., tool_calls?, reasoning_content?)`: one typed
+  chat message constructor. Use `Assistant` with `tool_calls` for the assistant
+  message that must be sent back after DeepSeek requests native tool calls.
+- `encode_chat_request(model, messages, tools?, thinking?, reasoning_effort?)`:
+  builds the full DeepSeek chat completions request body. `encode_chat_message`,
+  `encode_tool_definition`, and `encode_tool_call` expose the per-value
+  encoders for fixtures and tests.
 - `ToolDefinition(name, description, parameters, strict?)`: a native DeepSeek
   function tool definition with a JSON Schema parameters object.
 - `ToolCall(id~, name~, arguments~)`: a decoded function call request from the
@@ -63,7 +66,9 @@ test "encode chat message values" {
   inspect(message.role, content="user")
   assert_eq(message.content, "write a MoonBit test")
   assert_true(
-    ToJson::to_json(message).stringify().contains("\"role\":\"user\""),
+    @deepseek.encode_chat_message(message)
+    .stringify()
+    .contains("\"role\":\"user\""),
   )
 }
 ```
@@ -76,7 +81,7 @@ test "encode native tool call values" {
     "properties": { "path": { "type": "string" } },
     "required": ["path"],
   })
-  let body = ToJson::to_json(tool).stringify()
+  let body = @deepseek.encode_tool_definition(tool).stringify()
   assert_true(body.contains("\"type\":\"function\""))
 
   let call = @deepseek.ToolCall(
@@ -85,7 +90,11 @@ test "encode native tool call values" {
     arguments="{\"path\":\"README.mbt.md\"}",
   )
   let message = @deepseek.ChatMessage(Assistant, content="", tool_calls=[call])
-  assert_true(ToJson::to_json(message).stringify().contains("\"tool_calls\""))
+  assert_true(
+    @deepseek.encode_chat_message(message)
+    .stringify()
+    .contains("\"tool_calls\""),
+  )
 }
 ```
 

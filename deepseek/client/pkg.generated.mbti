@@ -24,3 +24,4 @@ pub async fn Client::chat(Self, Array[@deepseek.ChatMessage], tools? : Array[@de
 // Type aliases
 
 // Traits
+

@@ -35,7 +35,7 @@ test "native tool definition encoding" {
     "properties": { "cmd": { "type": "string" } },
     "required": ["cmd"],
   })
-  let body = ToJson::to_json(tool)
+  let body = @deepseek.encode_tool_definition(tool)
   let text = body.stringify()
   assert_true(text.contains("\"type\":\"function\""))
   assert_true(text.contains("\"name\":\"shell\""))
@@ -55,7 +55,7 @@ test "assistant tool call roundtrip message encoding" {
     tool_calls=[call],
     reasoning_content="run tests first",
   )
-  let text = ToJson::to_json(message).stringify()
+  let text = @deepseek.encode_chat_message(message).stringify()
   assert_true(text.contains("\"role\":\"assistant\""))
   assert_true(text.contains("\"content\":null"))
   assert_true(text.contains("\"tool_calls\""))

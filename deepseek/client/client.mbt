@@ -43,14 +43,12 @@ pub async fn Client::chat(
   messages : Array[@deepseek.ChatMessage],
   tools? : Array[@deepseek.ToolDefinition] = [],
 ) -> @deepseek.ChatResponse {
-  let body = ToJson::to_json(
-    Conversation(
-      self.model,
-      messages,
-      tools~,
-      thinking=self.thinking,
-      reasoning_effort=self.reasoning_effort,
-    ),
+  let body = @deepseek.encode_chat_request(
+    self.model,
+    messages,
+    tools~,
+    thinking?=self.thinking,
+    reasoning_effort?=self.reasoning_effort,
   )
   let (resp, data) = @http.post(self.api_url, body, headers={
     "Content-Type": "application/json",

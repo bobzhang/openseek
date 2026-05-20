@@ -1,22 +1,29 @@
 ///|
-pub impl ToJson for ChatMessage with to_json(self : ChatMessage) -> Json {
-  let content = match self.role {
-    Assistant if self.tool_calls.length() > 0 && self.content == "" =>
+/// Encodes a `ChatMessage` as the DeepSeek chat completions wire object.
+///
+/// Assistant messages whose `content` is empty but carry tool calls are
+/// encoded with JSON `content: null`, as the API requires.
+pub fn encode_chat_message(message : ChatMessage) -> Json {
+  let content = match message.role {
+    Assistant if message.tool_calls.length() > 0 && message.content == "" =>
       Json::null()
-    _ => Json::string(self.content)
+    _ => Json::string(message.content)
   }
   let fields : Map[String, Json] = {
-    "role": Json::string(self.role.to_string()),
+    "role": Json::string(message.role.to_string()),
     "content": content,
   }
-  match self.role {
+  match message.role {
     Tool(tool_call_id) => fields.set("tool_call_id", Json::string(tool_call_id))
     _ => ()
   }
-  if self.tool_calls.length() > 0 {
-    fields.set("tool_calls", ToJson::to_json(self.tool_calls))
+  if message.tool_calls.length() > 0 {
+    fields.set(
+      "tool_calls",
+      Json::array([ for call in message.tool_calls => encode_tool_call(call) ]),
+    )
   }
-  match self.reasoning_content {
+  match message.reasoning_content {
     Some(reasoning_content) =>
       fields.set("reasoning_content", Json::string(reasoning_content))
     None => ()
@@ -25,13 +32,14 @@ pub impl ToJson for ChatMessage with to_json(self : ChatMessage) -> Json {
 }
 
 ///|
-pub impl ToJson for ToolDefinition with to_json(self : ToolDefinition) -> Json {
+/// Encodes a `ToolDefinition` as a DeepSeek `tools[]` entry.
+pub fn encode_tool_definition(tool : ToolDefinition) -> Json {
   let function_fields : Map[String, Json] = {
-    "name": Json::string(self.name),
-    "description": Json::string(self.description),
-    "parameters": self.parameters,
+    "name": Json::string(tool.name),
+    "description": Json::string(tool.description),
+    "parameters": tool.parameters,
   }
-  if self.strict {
+  if tool.strict {
     function_fields.set("strict", Json::boolean(true))
   }
   Json::object({
@@ -41,15 +49,65 @@ pub impl ToJson for ToolDefinition with to_json(self : ToolDefinition) -> Json {
 }
 
 ///|
-pub impl ToJson for ToolCall with to_json(self : ToolCall) -> Json {
+/// Encodes a `ToolCall` as the DeepSeek assistant `tool_calls[]` entry.
+pub fn encode_tool_call(call : ToolCall) -> Json {
   Json::object({
-    "id": Json::string(self.id),
+    "id": Json::string(call.id),
     "type": Json::string("function"),
     "function": Json::object({
-      "name": Json::string(self.name),
-      "arguments": Json::string(self.arguments),
+      "name": Json::string(call.name),
+      "arguments": Json::string(call.arguments),
     }),
   })
+}
+
+///|
+/// Encodes a DeepSeek chat completions request body.
+///
+/// The request always asks for a JSON object response. `tools`, `thinking`,
+/// and `reasoning_effort` are omitted when empty / `None`.
+pub fn encode_chat_request(
+  model : Model,
+  messages : Array[ChatMessage],
+  tools? : Array[ToolDefinition] = [],
+  thinking? : ThinkingMode,
+  reasoning_effort? : ReasoningEffort,
+) -> Json {
+  let fields : Array[(String, Json)] = [
+    ("model", Json::string(model.to_string())),
+    (
+      "messages",
+      Json::array([ for message in messages => encode_chat_message(message) ]),
+    ),
+    ("stream", Json::boolean(false)),
+    ("response_format", Json::object({ "type": Json::string("json_object") })),
+  ]
+  if tools.length() > 0 {
+    fields.push(
+      (
+        "tools",
+        Json::array([ for tool in tools => encode_tool_definition(tool) ]),
+      ),
+    )
+  }
+  match thinking {
+    Some(thinking) =>
+      fields.push(
+        (
+          "thinking",
+          Json::object({ "type": Json::string(thinking.to_string()) }),
+        ),
+      )
+    None => ()
+  }
+  match reasoning_effort {
+    Some(reasoning_effort) =>
+      fields.push(
+        ("reasoning_effort", Json::string(reasoning_effort.to_string())),
+      )
+    None => ()
+  }
+  Json::object(Map(fields))
 }
 
 ///|
@@ -91,7 +149,7 @@ fn Usage::empty() -> Usage {
 
 ///|
 test "tool messages include tool call id" {
-  let body = ToJson::to_json(
+  let body = encode_chat_message(
     ChatMessage(Tool("call_123"), content="tool result"),
   )
   let text = body.stringify()
@@ -111,7 +169,7 @@ test "tool definitions encode as native DeepSeek tools" {
     },
     strict=true,
   )
-  let body = ToJson::to_json(tool)
+  let body = encode_tool_definition(tool)
   let text = body.stringify()
   assert_true(text.contains("\"type\":\"function\""))
   assert_true(text.contains("\"name\":\"get_weather\""))
@@ -120,7 +178,7 @@ test "tool definitions encode as native DeepSeek tools" {
 
 ///|
 test "assistant tool call messages encode tool_calls" {
-  let body = ToJson::to_json(
+  let body = encode_chat_message(
     ChatMessage(
       Assistant,
       content="",
@@ -146,7 +204,7 @@ test "assistant tool call messages encode tool_calls" {
 
 ///|
 test "assistant tool call messages preserve content when present" {
-  let body = ToJson::to_json(
+  let body = encode_chat_message(
     ChatMessage(Assistant, content="I will check that now.", tool_calls=[
       ToolCall(
         id="call_123",
