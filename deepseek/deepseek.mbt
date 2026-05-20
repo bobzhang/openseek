@@ -118,10 +118,17 @@ pub struct Usage {
 } derive(Debug)
 
 ///|
-/// Decoded DeepSeek chat response content and token usage.
+/// Decoded DeepSeek chat response content, tool calls, and token usage.
 pub struct ChatResponse {
+  /// Assistant text content returned by DeepSeek. This is empty when the API
+  /// returns JSON `content: null`, such as a tool-call-only assistant message.
   content : String
+  /// Reasoning or thinking text returned by DeepSeek. This is empty when the
+  /// response does not include `reasoning_content`.
   reasoning_content : String
+  /// Tool calls requested by the assistant. Echo these in the next assistant
+  /// `ChatMessage` before sending the corresponding tool result messages.
   tool_calls : Array[ToolCall]
+  /// Token usage metadata reported for the chat completion.
   usage : Usage
 } derive(Debug)

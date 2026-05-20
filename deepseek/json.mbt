@@ -54,29 +54,25 @@ pub impl ToJson for ToolCall with to_json(self : ToolCall) -> Json {
 
 ///|
 fn Usage::from_json(json : Json) -> Usage {
-  let fields = match json {
-    Object(fields) => fields
-    _ => Map([])
-  }
   {
-    prompt_tokens: match fields.get("prompt_tokens") {
-      Some(Number(n, ..)) => n.to_int()
+    prompt_tokens: match json {
+      { "prompt_tokens": Number(n, ..), .. } => n.to_int()
       _ => 0
     },
-    completion_tokens: match fields.get("completion_tokens") {
-      Some(Number(n, ..)) => n.to_int()
+    completion_tokens: match json {
+      { "completion_tokens": Number(n, ..), .. } => n.to_int()
       _ => 0
     },
-    total_tokens: match fields.get("total_tokens") {
-      Some(Number(n, ..)) => n.to_int()
+    total_tokens: match json {
+      { "total_tokens": Number(n, ..), .. } => n.to_int()
       _ => 0
     },
-    prompt_cache_hit_tokens: match fields.get("prompt_cache_hit_tokens") {
-      Some(Number(n, ..)) => n.to_int()
+    prompt_cache_hit_tokens: match json {
+      { "prompt_cache_hit_tokens": Number(n, ..), .. } => n.to_int()
       _ => 0
     },
-    prompt_cache_miss_tokens: match fields.get("prompt_cache_miss_tokens") {
-      Some(Number(n, ..)) => n.to_int()
+    prompt_cache_miss_tokens: match json {
+      { "prompt_cache_miss_tokens": Number(n, ..), .. } => n.to_int()
       _ => 0
     },
   }
@@ -182,31 +178,52 @@ pub impl FromJson for ToolCall with from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> ToolCall {
-  guard json is Object(fields) else {
-    json_decode_error(path, "ToolCall::from_json: expected object")
+  match json {
+    {
+      "id": String(id),
+      "function": { "name": String(name), "arguments": String(arguments), .. },
+      ..
+    } => ToolCall(id~, name~, arguments~)
+    {
+      "id": String(_),
+      "function": { "name": String(_), "arguments": _, .. },
+      ..
+    } =>
+      json_decode_error(
+        path.add_key("function").add_key("arguments"),
+        "ToolCall::from_json: expected function.arguments",
+      )
+    { "id": String(_), "function": { "name": String(_), .. }, .. } =>
+      json_decode_error(
+        path.add_key("function").add_key("arguments"),
+        "ToolCall::from_json: expected function.arguments",
+      )
+    { "id": String(_), "function": { "name": _, .. }, .. } =>
+      json_decode_error(
+        path.add_key("function").add_key("name"),
+        "ToolCall::from_json: expected function.name",
+      )
+    Object({ "id": String(_), "function": Object(_), .. }) =>
+      json_decode_error(
+        path.add_key("function").add_key("name"),
+        "ToolCall::from_json: expected function.name",
+      )
+    Object({ "id": String(_), "function": _, .. }) =>
+      json_decode_error(
+        path.add_key("function"),
+        "ToolCall::from_json: expected function object",
+      )
+    Object({ "id": String(_), .. }) =>
+      json_decode_error(
+        path.add_key("function"),
+        "ToolCall::from_json: expected function object",
+      )
+    Object({ "id": _, .. }) =>
+      json_decode_error(path.add_key("id"), "ToolCall::from_json: expected id")
+    Object(_) =>
+      json_decode_error(path.add_key("id"), "ToolCall::from_json: expected id")
+    _ => json_decode_error(path, "ToolCall::from_json: expected object")
   }
-  guard fields.get("id") is Some(String(id)) else {
-    json_decode_error(path.add_key("id"), "ToolCall::from_json: expected id")
-  }
-  guard fields.get("function") is Some(Object(function_fields)) else {
-    json_decode_error(
-      path.add_key("function"),
-      "ToolCall::from_json: expected function object",
-    )
-  }
-  guard function_fields.get("name") is Some(String(name)) else {
-    json_decode_error(
-      path.add_key("function").add_key("name"),
-      "ToolCall::from_json: expected function.name",
-    )
-  }
-  guard function_fields.get("arguments") is Some(String(arguments)) else {
-    json_decode_error(
-      path.add_key("function").add_key("arguments"),
-      "ToolCall::from_json: expected function.arguments",
-    )
-  }
-  ToolCall(id~, name~, arguments~)
 }
 
 ///|
@@ -217,82 +234,105 @@ pub impl FromJson for ChatResponse with from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> ChatResponse {
-  guard json is Object(parsed_fields) else {
-    json_decode_error(path, "ChatResponse::from_json: expected response object")
+  let message_path = path.add_key("choices").add_index(0).add_key("message")
+  let (message_fields, usage_json) : (Map[String, Json], Json?) = match json {
+    {
+      "choices": [{ "message": Object(message_fields), .. }, ..],
+      "usage": usage_json,
+      ..
+    } => (message_fields, Some(usage_json))
+    { "choices": [{ "message": Object(message_fields), .. }, ..], .. } =>
+      (message_fields, None)
+    { "choices": [], .. } =>
+      json_decode_error(
+        path.add_key("choices"),
+        "ChatResponse::from_json: empty choices",
+      )
+    { "choices": [Object({ "message": _, .. }), ..], .. } =>
+      json_decode_error(
+        message_path, "ChatResponse::from_json: expected message object",
+      )
+    { "choices": [Object(_), ..], .. } =>
+      json_decode_error(
+        message_path, "ChatResponse::from_json: expected message object",
+      )
+    { "choices": [_, ..], .. } =>
+      json_decode_error(
+        path.add_key("choices").add_index(0),
+        "ChatResponse::from_json: expected choice object",
+      )
+    { "choices": _, .. } =>
+      json_decode_error(
+        path.add_key("choices"),
+        "ChatResponse::from_json: expected choices array",
+      )
+    Object(_) =>
+      json_decode_error(
+        path.add_key("choices"),
+        "ChatResponse::from_json: expected choices array",
+      )
+    _ =>
+      json_decode_error(
+        path, "ChatResponse::from_json: expected response object",
+      )
   }
-  let choices_path = path.add_key("choices")
-  guard parsed_fields.get("choices") is Some(Array(choices)) else {
-    json_decode_error(
-      choices_path, "ChatResponse::from_json: expected choices array",
-    )
+  let tool_calls = match message_fields {
+    { "tool_calls": Array(raw_tool_calls), .. } => {
+      let tool_call_results = [
+        for index, tool_call in raw_tool_calls => {
+          try? FromJson::from_json(
+            tool_call,
+            message_path.add_key("tool_calls").add_index(index),
+          )
+        }
+      ]
+      let decoded : Array[ToolCall] = []
+      for result in tool_call_results {
+        match result {
+          Ok(tool_call) => decoded.push(tool_call)
+          Err(error) => raise error
+        }
+      }
+      decoded
+    }
+    { "tool_calls": Null, .. } => []
+    { "tool_calls": _, .. } =>
+      json_decode_error(
+        message_path.add_key("tool_calls"),
+        "ChatResponse::from_json: expected tool_calls array",
+      )
+    _ => []
   }
-  guard choices.length() > 0 else {
-    json_decode_error(choices_path, "ChatResponse::from_json: empty choices")
-  }
-  let choice_path = choices_path.add_index(0)
-  guard choices[0] is Object(choice_fields) else {
-    json_decode_error(
-      choice_path, "ChatResponse::from_json: expected choice object",
-    )
-  }
-  let message_path = choice_path.add_key("message")
-  guard choice_fields.get("message") is Some(Object(message_fields)) else {
-    json_decode_error(
-      message_path, "ChatResponse::from_json: expected message object",
-    )
-  }
-  let tool_calls = decode_tool_calls(message_fields, message_path)
-  let content = match message_fields.get("content") {
-    Some(String(content)) => content
-    Some(Null) => ""
-    None if tool_calls.length() > 0 => ""
+  let content = match message_fields {
+    { "content": String(content), .. } => content
+    { "content": Null, .. } => ""
+    { "content": _, .. } =>
+      json_decode_error(
+        message_path.add_key("content"),
+        "ChatResponse::from_json: expected message content",
+      )
+    _ if tool_calls.length() > 0 => ""
     _ =>
       json_decode_error(
         message_path.add_key("content"),
         "ChatResponse::from_json: expected message content",
       )
   }
-  let reasoning_content = match message_fields.get("reasoning_content") {
-    Some(String(reasoning_content)) => reasoning_content
-    Some(Null) | None => ""
-    _ =>
+  let reasoning_content = match message_fields {
+    { "reasoning_content": String(reasoning_content), .. } => reasoning_content
+    { "reasoning_content": Null, .. } => ""
+    { "reasoning_content": _, .. } =>
       json_decode_error(
         message_path.add_key("reasoning_content"),
         "ChatResponse::from_json: expected reasoning_content string",
       )
+    _ => ""
   }
-  let usage = match parsed_fields.get("usage") {
+  let usage = match usage_json {
     Some(usage) => FromJson::from_json(usage, path.add_key("usage"))
     None => Usage::empty()
   }
   { content, reasoning_content, tool_calls, usage }
-}
-
-///|
-fn decode_tool_calls(
-  message_fields : Map[String, Json],
-  message_path : @json.JsonPath,
-) -> Array[ToolCall] raise @json.JsonDecodeError {
-  match message_fields.get("tool_calls") {
-    Some(Array(tool_calls)) => {
-      let decoded : Array[ToolCall] = []
-      for index, tool_call in tool_calls {
-        decoded.push(
-          FromJson::from_json(
-            tool_call,
-            message_path.add_key("tool_calls").add_index(index),
-          ),
-        )
-      }
-      decoded
-    }
-    Some(Null) | None => []
-    _ =>
-      json_decode_error(
-        message_path.add_key("tool_calls"),
-        "ChatResponse::from_json: expected tool_calls array",
-      )
-  }
 }
 
 ///|

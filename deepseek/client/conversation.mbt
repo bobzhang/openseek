@@ -66,13 +66,7 @@ test "conversation always requests json output" {
   let text = body.stringify()
   assert_true(text.contains("\"response_format\""))
   assert_true(text.contains("\"json_object\""))
-  guard body is Object(body_fields) else {
-    fail("request body is not an object")
-  }
-  guard body_fields.get("response_format") is Some(Object(format)) else {
-    fail("missing response_format")
-  }
-  guard format.get("type") is Some(String("json_object")) else {
+  guard body is { "response_format": { "type": String("json_object"), .. }, .. } else {
     fail("wrong response_format")
   }
 }

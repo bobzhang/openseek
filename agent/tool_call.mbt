@@ -27,36 +27,12 @@ fn AgentToolCall::AgentToolCall(
 }
 
 ///|
-fn required_string_argument(
-  arguments : Json,
-  tool_name : String,
-  key : String,
-) -> Result[String, String] {
-  guard arguments is Object(fields) else {
-    return Err("\{tool_name} requires object arguments")
-  }
-  match fields.get(key) {
-    Some(String(value)) => Ok(value)
-    _ => Err("\{tool_name} requires arguments.\{key}")
-  }
-}
-
-///|
-fn optional_string_argument(arguments : Json, key : String) -> String? {
-  guard arguments is Object(fields) else { return None }
-  match fields.get(key) {
-    Some(String(value)) if value != "" => Some(value)
-    _ => None
-  }
-}
-
-///|
 test "parse native tool call arguments" {
   let call = AgentToolCall(
     ToolCall(id="call_123", name="shell", arguments="{\"cmd\":\"moon check\"}"),
   )
   assert_eq(call.name, "shell")
-  guard required_string_argument(call.arguments, "shell", "cmd") is Ok(cmd) else {
+  guard call.arguments is { "cmd": String(cmd), .. } else {
     fail("missing cmd")
   }
   assert_eq(cmd, "moon check")
@@ -71,15 +47,4 @@ test "reject invalid native tool call arguments" {
     }
   }
   fail("invalid arguments parsed")
-}
-
-///|
-test "optional string arguments skip missing and empty values" {
-  let arguments : Json = { "cmd": "moon test", "cwd": "" }
-  assert_true(optional_string_argument(arguments, "missing") is None)
-  assert_true(optional_string_argument(arguments, "cwd") is None)
-  guard optional_string_argument({ "cwd": ".moonagent" }, "cwd") is Some(cwd) else {
-    fail("missing cwd")
-  }
-  assert_eq(cwd, ".moonagent")
 }

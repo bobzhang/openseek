@@ -14,41 +14,46 @@ async fn execute_tool_call(call : AgentToolCall) -> ToolResult {
 
 ///|
 async fn execute_shell(arguments : Json) -> ToolResult {
-  match required_string_argument(arguments, "shell", "cmd") {
-    Ok(cmd) => {
-      let cwd = optional_string_argument(arguments, "cwd")
+  match arguments {
+    { "cmd": String(cmd), "cwd": String(cwd), .. } if cwd != "" =>
       continue_result(
-        shell(cmd, cwd) catch {
+        shell(cmd, Some(cwd)) catch {
           error => "error running shell: \{error}"
         },
       )
-    }
-    Err(error) => continue_result("error: \{error}")
+    { "cmd": String(cmd), .. } =>
+      continue_result(
+        shell(cmd, None) catch {
+          error => "error running shell: \{error}"
+        },
+      )
+    Object(_) => continue_result("error: shell requires arguments.cmd")
+    _ => continue_result("error: shell requires object arguments")
   }
 }
 
 ///|
 async fn execute_read(arguments : Json) -> ToolResult {
-  match required_string_argument(arguments, "read", "path") {
-    Ok(path) =>
+  match arguments {
+    { "path": String(path), .. } =>
       continue_result(
         @fs.read_file(path).text() catch {
           error => "error reading \{path}: \{error}"
         },
       )
-    Err(error) => continue_result("error: \{error}")
+    Object(_) => continue_result("error: read requires arguments.path")
+    _ => continue_result("error: read requires object arguments")
   }
 }
 
 ///|
 async fn execute_write(arguments : Json) -> ToolResult {
-  let path = match required_string_argument(arguments, "write", "path") {
-    Ok(path) => path
-    Err(error) => return continue_result("error: \{error}")
-  }
-  let content = match required_string_argument(arguments, "write", "content") {
-    Ok(content) => content
-    Err(error) => return continue_result("error: \{error}")
+  let (path, content) = match arguments {
+    { "path": String(path), "content": String(content), .. } => (path, content)
+    { "path": String(_), .. } =>
+      return continue_result("error: write requires arguments.content")
+    Object(_) => return continue_result("error: write requires arguments.path")
+    _ => return continue_result("error: write requires object arguments")
   }
   try {
     @fs.write_file(path, content, create_mode=CreateOrTruncate)
@@ -60,9 +65,9 @@ async fn execute_write(arguments : Json) -> ToolResult {
 
 ///|
 fn execute_finish(arguments : Json) -> ToolResult {
-  let answer = match required_string_argument(arguments, "finish", "answer") {
-    Ok(answer) => answer
-    Err(_) => ""
+  let answer = match arguments {
+    { "answer": String(answer), .. } => answer
+    _ => ""
   }
   { output: answer, finished: true }
 }
