@@ -1,7 +1,7 @@
 ///|
 test "client defaults" {
   let client = @client.Client(api_key="test-key")
-  inspect(client.model, content="deepseek-v4-flash")
+  inspect(client.model, content="deepseek-v4-pro")
   assert_eq(client.api_url, "https://api.deepseek.com/chat/completions")
 }
 
@@ -17,7 +17,7 @@ test "client debug redacts api key" {
     content=(
       #|{
       #|  api_key: ...,
-      #|  model: V4Flash,
+      #|  model: V4Pro,
       #|  api_url: "https://api.deepseek.com/chat/completions",
       #|  thinking: Some(Enabled),
       #|  reasoning_effort: Some(Max),

@@ -2,7 +2,7 @@
 let default_api_url : String = "https://api.deepseek.com/chat/completions"
 
 ///|
-let default_model : @deepseek.Model = V4Flash
+let default_model : @deepseek.Model = V4Pro
 
 ///|
 type API_KEY = String
@@ -20,7 +20,7 @@ pub struct Client {
 ///|
 /// Constructs a DeepSeek HTTP client.
 ///
-/// `model` defaults to `deepseek-v4-flash`; `api_url` defaults to the DeepSeek
+/// `model` defaults to `deepseek-v4-pro`; `api_url` defaults to the DeepSeek
 /// chat completions endpoint. Pass `thinking` and `reasoning_effort` to control
 /// DeepSeek V4 thinking mode explicitly.
 pub fn Client::Client(

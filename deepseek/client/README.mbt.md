@@ -33,7 +33,7 @@ body. Successful responses are parsed and decoded as `@deepseek.ChatResponse`.
 ## Configuration
 
 The default endpoint is `https://api.deepseek.com/chat/completions`, and the
-default model is `deepseek-v4-flash`. Tests and examples use placeholder API
+default model is `deepseek-v4-pro`. Tests and examples use placeholder API
 keys unless explicitly marked as real API smoke tests. Pass
 `thinking=Some(Enabled)` and `reasoning_effort=Some(Max)` for explicit
 thinking-mode agent requests.

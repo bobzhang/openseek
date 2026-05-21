@@ -38,7 +38,7 @@ pub(all) enum ToolResult {
 }
 
 pub struct Tools {
-  by_name : Map[String, AgentToolDefinition]
+  // private fields
 }
 pub fn Tools::Tools(Array[AgentToolDefinition]) -> Self raise
 pub fn Tools::find(Self, String) -> AgentToolDefinition?

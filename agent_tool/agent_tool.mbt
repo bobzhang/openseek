@@ -88,7 +88,7 @@ pub(all) enum ToolResult {
 /// A name-indexed collection of `AgentToolDefinition` values. Construct via
 /// `Tools(definitions)`, which raises if any two definitions share a name.
 pub struct Tools {
-  by_name : Map[String, AgentToolDefinition]
+  priv by_name : Map[String, AgentToolDefinition]
 }
 
 ///|
