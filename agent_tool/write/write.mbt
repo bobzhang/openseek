@@ -9,16 +9,11 @@
 ///   before writing.
 ///
 /// ## Result
-/// - `Continue("ok: wrote <n> chars to <path>")` on success — `n` is the
-///   character count of the written content.
-/// - `Continue("error writing <path>: <error>")` if the write fails
-///   (permission denied, missing parent directory, etc.).
-/// - `Continue("error: write requires arguments.content")` if `path` is
-///   present but `content` is missing or not a string.
-/// - `Continue("error: write requires arguments.path")` if `path` is missing
-///   from an object-shaped payload.
-/// - `Continue("error: write requires object arguments")` if the payload is
-///   not a JSON object.
+/// - `Respond(ToolOutput("ok: wrote <n> chars to <path>"))` on success.
+/// - `Respond(ToolOutput("error writing <path>: <error>", is_error=true))`
+///   if the write fails.
+/// - `Respond(ToolOutput("error: write requires ...", is_error=true))` for
+///   invalid arguments.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
     "write",
@@ -36,19 +31,36 @@ pub fn definition() -> @agent_tool.AgentToolDefinition {
 }
 
 ///|
-async fn execute(arguments : Json) -> @agent_tool.ToolResult {
+async fn execute(arguments : Json) -> @agent_tool.ToolAction {
   let (path, content) = match arguments {
     { "path": String(path), "content": String(content), .. } => (path, content)
     { "path": String(_), .. } =>
-      return Continue("error: write requires arguments.content")
-    Object(_) => return Continue("error: write requires arguments.path")
-    _ => return Continue("error: write requires object arguments")
+      return @agent_tool.ToolAction::respond(
+        "error: write requires arguments.content",
+        is_error=true,
+      )
+    Object(_) =>
+      return @agent_tool.ToolAction::respond(
+        "error: write requires arguments.path",
+        is_error=true,
+      )
+    _ =>
+      return @agent_tool.ToolAction::respond(
+        "error: write requires object arguments",
+        is_error=true,
+      )
   }
   try {
     @fs.write_file(path, content, create_mode=CreateOrTruncate)
-    Continue("ok: wrote \{content.length()} chars to \{path}")
+    @agent_tool.ToolAction::respond(
+      "ok: wrote \{content.length()} chars to \{path}",
+    )
   } catch {
-    error => Continue("error writing \{path}: \{error}")
+    error =>
+      @agent_tool.ToolAction::respond(
+        "error writing \{path}: \{error}",
+        is_error=true,
+      )
   }
 }
 
@@ -56,8 +68,9 @@ async fn execute(arguments : Json) -> @agent_tool.ToolResult {
 async test "write creates a file with the given content" {
   let path = "/tmp/openseek-write-test.txt"
   let result = execute({ "path": path, "content": "hello write" })
-  guard result is Continue(output) else { fail("expected Continue") }
-  assert_eq(output, "ok: wrote 11 chars to \{path}")
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_eq(output.content, "ok: wrote 11 chars to \{path}")
+  assert_false(output.is_error)
   let read_back = @fs.read_file(path).text()
   assert_eq(read_back, "hello write")
 }
@@ -67,8 +80,9 @@ async test "write truncates existing files" {
   let path = "/tmp/openseek-write-truncate.txt"
   @fs.write_file(path, "long original content", create_mode=CreateOrTruncate)
   let result = execute({ "path": path, "content": "short" })
-  guard result is Continue(output) else { fail("expected Continue") }
-  assert_eq(output, "ok: wrote 5 chars to \{path}")
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_eq(output.content, "ok: wrote 5 chars to \{path}")
+  assert_false(output.is_error)
   let read_back = @fs.read_file(path).text()
   assert_eq(read_back, "short")
 }
@@ -78,8 +92,9 @@ async test "write accepts empty content" {
   let path = "/tmp/openseek-write-empty.txt"
   @fs.write_file(path, "previous", create_mode=CreateOrTruncate)
   let result = execute({ "path": path, "content": "" })
-  guard result is Continue(output) else { fail("expected Continue") }
-  assert_eq(output, "ok: wrote 0 chars to \{path}")
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_eq(output.content, "ok: wrote 0 chars to \{path}")
+  assert_false(output.is_error)
   let read_back = @fs.read_file(path).text()
   assert_eq(read_back, "")
 }
@@ -90,27 +105,31 @@ async test "write surfaces filesystem errors" {
     "path": "/tmp/openseek-missing-dir/does-not-exist.txt",
     "content": "x",
   })
-  guard result is Continue(output) else { fail("expected Continue") }
-  assert_true(output.contains("error writing"))
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_true(output.content.contains("error writing"))
+  assert_true(output.is_error)
 }
 
 ///|
 async test "write rejects missing content" {
   let result = execute({ "path": "/tmp/openseek-noop.txt" })
-  guard result is Continue(output) else { fail("expected Continue") }
-  assert_eq(output, "error: write requires arguments.content")
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_eq(output.content, "error: write requires arguments.content")
+  assert_true(output.is_error)
 }
 
 ///|
 async test "write rejects missing path" {
   let result = execute({ "content": "stuff" })
-  guard result is Continue(output) else { fail("expected Continue") }
-  assert_eq(output, "error: write requires arguments.path")
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_eq(output.content, "error: write requires arguments.path")
+  assert_true(output.is_error)
 }
 
 ///|
 async test "write rejects non-object arguments" {
   let result = execute(Json::null())
-  guard result is Continue(output) else { fail("expected Continue") }
-  assert_eq(output, "error: write requires object arguments")
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_eq(output.content, "error: write requires object arguments")
+  assert_true(output.is_error)
 }

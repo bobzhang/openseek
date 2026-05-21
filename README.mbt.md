@@ -11,6 +11,7 @@ entry point so request encoding can be tested without network access.
 | `bobzhang/openseek` | Root package and module overview. | `README.mbt.md` |
 | `bobzhang/openseek/deepseek` | Pure DeepSeek chat data, JSON encoding, and response decoding. | `deepseek/README.mbt.md` |
 | `bobzhang/openseek/deepseek/client` | Native-only HTTP transport for DeepSeek chat completions. | `deepseek/client/README.mbt.md` |
+| `bobzhang/openseek/agent_tool` | Tool registry, executor, output, and control-action types. | `agent_tool/README.mbt.md` |
 | `bobzhang/openseek/agent` | Native-only OpenSeek agent loop and local tool dispatch. | `agent/README.mbt.md` |
 | `bobzhang/openseek/cmd/main` | Native-only command-line entry point. | `cmd/main/README.md` |
 
@@ -30,6 +31,11 @@ The `deepseek/client` subpackage exposes the HTTP client:
 - `Client::chat(messages, tools?)`
 
 It depends on `moonbitlang/async/http` and is native-only.
+
+The `agent_tool` package exposes the local tool registry and typed executor
+boundary. Tool executors return `ToolAction`: normal tools use
+`Respond(ToolOutput(...))`, while control tools such as `finish` use
+`Control(Finish(...))`.
 
 The `agent` subpackage contains the OpenSeek agent loop, native DeepSeek
 tool-call handling, and local tool dispatch. It depends on `deepseek/client`,

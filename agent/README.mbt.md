@@ -9,6 +9,8 @@ The package depends on:
 - `bobzhang/openseek/deepseek` for typed models, messages, roles, and tool
   definitions.
 - `bobzhang/openseek/deepseek/client` for HTTP chat requests.
+- `bobzhang/openseek/agent_tool` for tool registries, typed tool output, and
+  loop-control actions.
 - `moonbitlang/async/fs` and `moonbitlang/async/process` for local tool
   execution.
 
@@ -18,9 +20,10 @@ The package depends on:
 
 `run` creates a DeepSeek client, starts a conversation with a system prompt and
 user task, sends native function tool definitions on each turn, executes any
-returned tool calls, and sends tool results back with `Tool(call.id)` messages.
-The loop stops when the model answers directly, calls the `finish` tool, or the
-step limit is reached.
+returned tool calls, and sends `Respond(ToolOutput(...)).content` back with
+`Tool(call.id)` messages. The loop stops when the model answers directly, a
+tool returns `Control(Finish(...))` / `Control(Abort(...))`, or the step limit
+is reached.
 
 The agent client enables DeepSeek V4 thinking mode explicitly with
 `thinking=enabled` and `reasoning_effort=max`. When DeepSeek returns

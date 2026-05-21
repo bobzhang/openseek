@@ -60,12 +60,12 @@ pub fn AgentToolDefinition::AgentToolDefinition(
 /// Wraps a tool executor as either an async or synchronous function. The
 /// framework runs both uniformly through `ToolExecutor::run`.
 pub(all) enum ToolExecutor {
-  Async(async (Json) -> ToolResult)
-  Sync((Json) -> ToolResult)
+  Async(async (Json) -> ToolAction)
+  Sync((Json) -> ToolAction)
 }
 
 ///|
-async fn ToolExecutor::run(self : ToolExecutor, arguments : Json) -> ToolResult {
+async fn ToolExecutor::run(self : ToolExecutor, arguments : Json) -> ToolAction {
   match self {
     Async(execute) => execute(arguments)
     Sync(execute) => execute(arguments)
@@ -73,15 +73,64 @@ async fn ToolExecutor::run(self : ToolExecutor, arguments : Json) -> ToolResult 
 }
 
 ///|
-/// The outcome of running a tool. The agent loop branches on this.
-pub(all) enum ToolResult {
-  /// Append the string as a `Tool(id)` chat message and keep looping. Tool-
-  /// reported errors use this variant too — the model sees the error text
-  /// and decides what to do next.
-  Continue(String)
-  /// Stop the loop and treat the string as the final answer to surface to
-  /// the user.
+/// Normal output produced by a tool and sent back to the model as a
+/// `Tool(id)` chat message.
+pub struct ToolOutput {
+  /// Text content sent to the model.
+  content : String
+  /// Whether the host should treat this as a tool-level error. The content is
+  /// still sent to the model so it can recover or choose another action.
+  is_error : Bool
+}
+
+///|
+/// Constructs typed tool output. `is_error` defaults to `false` for ordinary
+/// successful tool responses.
+pub fn ToolOutput::ToolOutput(
+  content : String,
+  is_error? : Bool = false,
+) -> ToolOutput {
+  { content, is_error }
+}
+
+///|
+/// Agent-level control requested by a tool action.
+pub(all) enum AgentControl {
+  /// Stop the loop and surface the string as the final answer to the user.
   Finish(String)
+  /// Stop the loop because execution cannot usefully continue.
+  Abort(String)
+}
+
+///|
+/// The action returned by a tool executor. Normal tools respond to the model;
+/// control tools request an agent-loop state transition.
+pub(all) enum ToolAction {
+  /// Append the output as a `Tool(id)` chat message and keep looping.
+  Respond(ToolOutput)
+  /// Request a loop-control action such as finishing the task.
+  Control(AgentControl)
+}
+
+///|
+/// Builds a normal tool response action.
+pub fn ToolAction::respond(
+  content : String,
+  is_error? : Bool = false,
+) -> ToolAction {
+  Respond(ToolOutput(content, is_error~))
+}
+
+///|
+/// Builds an action that finishes the agent loop.
+pub fn ToolAction::finish(answer : String) -> ToolAction {
+  Control(Finish(answer))
+}
+
+///|
+/// Builds an action that aborts the agent loop.
+pub fn ToolAction::abort(reason : String) -> ToolAction {
+  Control(Abort(reason))
 }
 
 ///|
@@ -126,15 +175,16 @@ pub fn Tools::function_tools(self : Tools) -> Array[@deepseek.ToolDefinition] {
 }
 
 ///|
-/// Dispatches a parsed tool call against `tools`. Returns a `Continue` result
-/// with an `error: unknown tool` message when no definition matches.
+/// Dispatches a parsed tool call against `tools`. Returns an error response
+/// action when no definition matches.
 pub async fn execute_tool_call(
   call : AgentToolCall,
   tools : Tools,
-) -> ToolResult {
+) -> ToolAction {
   match tools.find(call.name) {
     Some(tool) => tool.execute.run(call.arguments)
-    None => Continue("error: unknown tool \{call.name}")
+    None =>
+      ToolAction::respond("error: unknown tool \{call.name}", is_error=true)
   }
 }
 
@@ -162,13 +212,33 @@ test "reject invalid native tool call arguments" {
 }
 
 ///|
+test "ToolAction helpers build structured actions" {
+  let response = ToolAction::respond("ok")
+  guard response is Respond(output) else { fail("expected Respond") }
+  assert_eq(output.content, "ok")
+  assert_false(output.is_error)
+  let error_response = ToolAction::respond("bad", is_error=true)
+  guard error_response is Respond(error_output) else {
+    fail("expected error Respond")
+  }
+  assert_eq(error_output.content, "bad")
+  assert_true(error_output.is_error)
+  let finished = ToolAction::finish("done")
+  guard finished is Control(Finish(answer)) else { fail("expected Finish") }
+  assert_eq(answer, "done")
+  let aborted = ToolAction::abort("stop")
+  guard aborted is Control(Abort(reason)) else { fail("expected Abort") }
+  assert_eq(reason, "stop")
+}
+
+///|
 test "Tools::function_tools converts the registry to deepseek tool definitions" {
   let tools = Tools([
     {
       name: "echo",
       description: "Echo the input.",
       schema: JsonSchema({ "type": "object" }),
-      execute: Sync(_args => Continue("ok")),
+      execute: Sync(_args => ToolAction::respond("ok")),
     },
   ])
   let function_tools = tools.function_tools()
@@ -183,7 +253,7 @@ test "Tools::find returns the registered definition by name" {
       name: "echo",
       description: "Echo.",
       schema: JsonSchema({ "type": "object" }),
-      execute: Sync(_args => Continue("ok")),
+      execute: Sync(_args => ToolAction::respond("ok")),
     },
   ])
   guard tools.find("echo") is Some(definition) else { fail("missing echo") }
@@ -198,13 +268,13 @@ test "Tools::Tools raises on duplicate tool names" {
       name: "echo",
       description: "First.",
       schema: JsonSchema({ "type": "object" }),
-      execute: Sync(_args => Continue("first")),
+      execute: Sync(_args => ToolAction::respond("first")),
     },
     {
       name: "echo",
       description: "Second.",
       schema: JsonSchema({ "type": "object" }),
-      execute: Sync(_args => Continue("second")),
+      execute: Sync(_args => ToolAction::respond("second")),
     },
   ]) catch {
     error => {
@@ -219,10 +289,11 @@ test "Tools::Tools raises on duplicate tool names" {
 async test "execute_tool_call reports unknown tool" {
   let call = AgentToolCall(ToolCall(id="call_1", name="ghost", arguments="{}"))
   let result = execute_tool_call(call, Tools([]))
-  guard result is Continue(output) else {
-    fail("unknown tool should produce Continue")
+  guard result is Respond(output) else {
+    fail("unknown tool should produce Respond")
   }
-  assert_eq(output, "error: unknown tool ghost")
+  assert_eq(output.content, "error: unknown tool ghost")
+  assert_true(output.is_error)
 }
 
 ///|
@@ -234,8 +305,8 @@ async test "execute_tool_call dispatches to registered executor" {
       schema: JsonSchema({ "type": "object" }),
       execute: Sync(args => {
         match args {
-          { "value": String(v), .. } => Continue(v)
-          _ => Continue("no value")
+          { "value": String(v), .. } => ToolAction::respond(v)
+          _ => ToolAction::respond("no value", is_error=true)
         }
       }),
     },
@@ -244,15 +315,17 @@ async test "execute_tool_call dispatches to registered executor" {
     ToolCall(id="call_1", name="echo", arguments="{\"value\":\"hi\"}"),
   )
   let result = execute_tool_call(call, tools)
-  guard result is Continue(output) else { fail("expected Continue") }
-  assert_eq(output, "hi")
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_eq(output.content, "hi")
+  assert_false(output.is_error)
 }
 
 ///|
-async fn async_echo(args : Json) -> ToolResult {
+async fn async_echo(args : Json) -> ToolAction {
+  @async.pause()
   match args {
-    { "value": String(v), .. } => Continue(v)
-    _ => Continue("no value")
+    { "value": String(v), .. } => ToolAction::respond(v)
+    _ => ToolAction::respond("no value", is_error=true)
   }
 }
 
@@ -270,8 +343,9 @@ async test "execute_tool_call dispatches to async executor" {
     ToolCall(id="call_1", name="echo", arguments="{\"value\":\"async-hi\"}"),
   )
   let result = execute_tool_call(call, tools)
-  guard result is Continue(output) else { fail("expected Continue") }
-  assert_eq(output, "async-hi")
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_eq(output.content, "async-hi")
+  assert_false(output.is_error)
 }
 
 ///|
@@ -281,7 +355,7 @@ test "Tools::function_tools preserves description and schema" {
       name: "echo",
       description: "Echo what comes in.",
       schema: JsonSchema({ "type": "object", "properties": {} }),
-      execute: Sync(_args => Continue("ok")),
+      execute: Sync(_args => ToolAction::respond("ok")),
     },
   ])
   let function_tools = tools.function_tools()
@@ -306,19 +380,19 @@ test "Tools::function_tools yields one entry per definition" {
       name: "first",
       description: "First.",
       schema: JsonSchema({ "type": "object" }),
-      execute: Sync(_args => Continue("1")),
+      execute: Sync(_args => ToolAction::respond("1")),
     },
     {
       name: "second",
       description: "Second.",
       schema: JsonSchema({ "type": "object" }),
-      execute: Sync(_args => Continue("2")),
+      execute: Sync(_args => ToolAction::respond("2")),
     },
     {
       name: "third",
       description: "Third.",
       schema: JsonSchema({ "type": "object" }),
-      execute: Sync(_args => Continue("3")),
+      execute: Sync(_args => ToolAction::respond("3")),
     },
   ])
   let function_tools = tools.function_tools()

@@ -11,10 +11,12 @@ should `shell` a `mkdir -p` first when it needs nested directories.
 | `path`    | string | yes | Filesystem path. Relative paths resolve against the agent process's current working directory. |
 | `content` | string | yes | Full file body. Empty strings are accepted and produce a zero-byte file. |
 
-## Result
+## Action
 
-The result is always a `Continue` — the agent loop forwards the output to the
-model as a tool-call response. The string body has one of these shapes:
+The action is always `Respond(ToolOutput(...))` — the agent loop forwards
+`ToolOutput.content` to the model as a tool-call response. `is_error` is
+`false` on success and `true` for write or argument failures. The string body
+has one of these shapes:
 
 - `"ok: wrote <n> chars to <path>"` on success — `n` is the character count
   of the written content.

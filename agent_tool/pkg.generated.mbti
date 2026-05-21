@@ -6,11 +6,16 @@ import {
 }
 
 // Values
-pub async fn execute_tool_call(AgentToolCall, Tools) -> ToolResult
+pub async fn execute_tool_call(AgentToolCall, Tools) -> ToolAction
 
 // Errors
 
 // Types and methods
+pub(all) enum AgentControl {
+  Finish(String)
+  Abort(String)
+}
+
 pub struct AgentToolCall {
   name : String
   arguments : Json
@@ -27,15 +32,24 @@ pub fn AgentToolDefinition::AgentToolDefinition(String, String, JsonSchema, Tool
 
 pub(all) struct JsonSchema(Json)
 
+pub(all) enum ToolAction {
+  Respond(ToolOutput)
+  Control(AgentControl)
+}
+pub fn ToolAction::abort(String) -> Self
+pub fn ToolAction::finish(String) -> Self
+pub fn ToolAction::respond(String, is_error? : Bool) -> Self
+
 pub(all) enum ToolExecutor {
-  Async(async (Json) -> ToolResult)
-  Sync((Json) -> ToolResult)
+  Async(async (Json) -> ToolAction)
+  Sync((Json) -> ToolAction)
 }
 
-pub(all) enum ToolResult {
-  Continue(String)
-  Finish(String)
+pub struct ToolOutput {
+  content : String
+  is_error : Bool
 }
+pub fn ToolOutput::ToolOutput(String, is_error? : Bool) -> Self
 
 pub struct Tools {
   // private fields

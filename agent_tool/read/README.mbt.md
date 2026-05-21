@@ -9,10 +9,12 @@ file is read into memory; there is no streaming or range support.
 | ------ | ------ | -------- | ----- |
 | `path` | string | yes | Filesystem path. Relative paths resolve against the agent process's current working directory. |
 
-## Result
+## Action
 
-The result is always a `Continue` — the agent loop forwards the output to the
-model as a tool-call response. The string body has one of these shapes:
+The action is always `Respond(ToolOutput(...))` — the agent loop forwards
+`ToolOutput.content` to the model as a tool-call response. `is_error` is
+`false` on success and `true` for read or argument failures. The string body
+has one of these shapes:
 
 - The file's text contents on success.
 - `"error reading <path>: <error>"` — the read failed. Common causes: the

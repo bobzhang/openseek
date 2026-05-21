@@ -59,15 +59,21 @@ pub async fn run(
       }
       let result = @agent_tool.execute_tool_call(tool_call, tools)
       let output = match result {
-        Finish(answer) => {
+        Control(Finish(answer)) => {
           println("=== finished ===")
           println(answer)
           return
         }
-        Continue(output) => output
+        Control(Abort(reason)) => {
+          println("=== aborted ===")
+          println(reason)
+          return
+        }
+        Respond(output) => output
       }
-      println("tool: \{output}")
-      messages.push(ChatMessage(Tool(native_call.id), content=output))
+      let label = if output.is_error { "tool error" } else { "tool" }
+      println("\{label}: \{output.content}")
+      messages.push(ChatMessage(Tool(native_call.id), content=output.content))
     }
   }
   println("=== max steps exhausted ===")

@@ -12,11 +12,13 @@ and any other workspace task the other built-in tools don't cover.
 | `cmd` | string | yes | Passed as the single argument to `sh -c`. |
 | `cwd` | string | no  | Working directory. An empty string is treated as missing. |
 
-## Result
+## Action
 
-The result is always a `Continue` — the agent loop forwards the output to the
-model as a tool-call response and never finishes from a `shell` invocation.
-The string body has one of these shapes:
+The action is always `Respond(ToolOutput(...))` — the agent loop forwards
+`ToolOutput.content` to the model as a tool-call response and never finishes
+from a `shell` invocation. `is_error` is `true` for launch failures, invalid
+arguments, and non-zero shell exit codes. The string body has one of these
+shapes:
 
 - `"exit=<code>\n<stdout/stderr merged>"` — normal completion.
 - `"error running shell: <error>"` — `sh -c` failed to launch (rare; usually

@@ -2,8 +2,8 @@
 
 `finish` ends the agent loop and returns `arguments.answer` as the final
 result surfaced to the user. It is the only built-in tool whose result is a
-`Finish` — every other tool produces a `Continue` and lets the loop keep
-running.
+`Control(Finish(...))` action — every other built-in tool produces
+`Respond(ToolOutput(...))` and lets the loop keep running.
 
 ## Arguments
 
@@ -11,12 +11,12 @@ running.
 | -------- | ------ | -------- | ----- |
 | `answer` | string | yes | Final answer text. Multiline strings are preserved as written. |
 
-## Result
+## Action
 
-- `Finish(<answer>)` — stops the loop and uses the string as the final
-  answer. The model sees a clean end-of-task signal.
-- `Finish("")` — fallback when `answer` is missing, not a string, or the
-  arguments are not a JSON object. This is intentionally lenient: a
+- `Control(Finish(<answer>))` — stops the loop and uses the string as the
+  final answer. The model sees a clean end-of-task signal.
+- `Control(Finish(""))` — fallback when `answer` is missing, not a string,
+  or the arguments are not a JSON object. This is intentionally lenient: a
   malformed `finish` call still ends the loop, just with no answer text.
 
 ## Example
