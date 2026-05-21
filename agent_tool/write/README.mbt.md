@@ -42,3 +42,33 @@ test "write tool advertises the expected schema" {
   assert_true(text.contains("\"required\""))
 }
 ```
+
+```moonbit check
+///|
+async test "write tool updates an implementation note through the registry" {
+  let path = "/tmp/openseek-write-readme-note.txt"
+  @fs.write_file(path, "old note", create_mode=CreateOrTruncate)
+
+  let tools = @agent_tool.Tools([@write.definition()])
+  let call = @agent_tool.AgentToolCall(
+    ToolCall(
+      id="call_write_note",
+      name="write",
+      arguments=(
+        #|{
+        #|  "path": "/tmp/openseek-write-readme-note.txt",
+        #|  "content": "tests green"
+        #|}
+      ),
+    ),
+  )
+  let result = @agent_tool.execute_tool_call(call, tools)
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_eq(
+    output.content,
+    "ok: wrote 11 chars to /tmp/openseek-write-readme-note.txt",
+  )
+  assert_false(output.is_error)
+  assert_eq(@fs.read_file(path).text(), "tests green")
+}
+```

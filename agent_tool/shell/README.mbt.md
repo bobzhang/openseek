@@ -43,3 +43,27 @@ test "shell tool advertises the expected schema" {
   assert_true(text.contains("\"required\""))
 }
 ```
+
+```moonbit check
+///|
+async test "shell tool runs a project-style command through the registry" {
+  let tools = @agent_tool.Tools([@shell.definition()])
+  let call = @agent_tool.AgentToolCall(
+    ToolCall(
+      id="call_shell_count",
+      name="shell",
+      arguments=(
+        #|{
+        #|  "cmd": "printf 'alpha beta' | wc -w",
+        #|  "cwd": "/tmp"
+        #|}
+      ),
+    ),
+  )
+  let result = @agent_tool.execute_tool_call(call, tools)
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_false(output.is_error)
+  assert_true(output.content.contains("exit=0"))
+  assert_true(output.content.contains("2"))
+}
+```

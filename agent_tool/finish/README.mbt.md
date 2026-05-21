@@ -32,3 +32,24 @@ test "finish tool advertises the expected schema" {
   assert_true(text.contains("\"required\""))
 }
 ```
+
+```moonbit check
+///|
+async test "finish tool returns the final agent answer through the registry" {
+  let tools = @agent_tool.Tools([@finish.definition()])
+  let call = @agent_tool.AgentToolCall(
+    ToolCall(
+      id="call_finish_answer",
+      name="finish",
+      arguments=(
+        #|{
+        #|  "answer": "Updated tests and ran moon test."
+        #|}
+      ),
+    ),
+  )
+  let result = @agent_tool.execute_tool_call(call, tools)
+  guard result is Control(Finish(answer)) else { fail("expected Finish") }
+  assert_eq(answer, "Updated tests and ran moon test.")
+}
+```
