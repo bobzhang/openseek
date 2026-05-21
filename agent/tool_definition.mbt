@@ -58,14 +58,15 @@ fn string_schema() -> Json {
 
 ///|
 test "function tools include json schemas" {
-  let tools = @agent_tool.function_tools(tool_definitions())
-  assert_eq(tools.length(), 4)
-  let names = [ for t in tools => t.name ]
+  let tools = @agent_tool.Tools(tool_definitions())
+  let function_tools = tools.function_tools()
+  assert_eq(function_tools.length(), 4)
+  let names = [ for t in function_tools => t.name ]
   assert_true(names.contains("shell"))
   assert_true(names.contains("read"))
   assert_true(names.contains("write"))
   assert_true(names.contains("finish"))
-  for t in tools {
+  for t in function_tools {
     let params = t.parameters.stringify()
     assert_true(params.contains("\"properties\""))
     assert_true(params.contains("\"required\""))
@@ -74,9 +75,8 @@ test "function tools include json schemas" {
 
 ///|
 test "tool definitions are executable registry entries" {
-  guard @agent_tool.find_tool(tool_definitions(), "finish") is Some(tool) else {
-    fail("missing finish tool")
-  }
+  let tools = @agent_tool.Tools(tool_definitions())
+  guard tools.find("finish") is Some(tool) else { fail("missing finish tool") }
   guard tool.execute is Sync(execute) else {
     fail("finish should use a synchronous executor")
   }

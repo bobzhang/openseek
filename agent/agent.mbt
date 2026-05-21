@@ -14,16 +14,19 @@ pub async fn run(
     thinking=Some(Enabled),
     reasoning_effort=Some(Max),
   )
+  let tools = @agent_tool.Tools(tool_definitions()) catch {
+    error => {
+      println("agent setup failed: \{error}")
+      return
+    }
+  }
   let messages : Array[@deepseek.ChatMessage] = [
     ChatMessage(System, content=system_prompt()),
     ChatMessage(User, content=task),
   ]
   for step in 0..<max_steps {
     println("--- step \{step + 1} ---")
-    let response = client.chat(
-      messages,
-      tools=@agent_tool.function_tools(tool_definitions()),
-    )
+    let response = client.chat(messages, tools=tools.function_tools())
     if response.content != "" {
       println("agent: \{response.content}")
     }
@@ -54,7 +57,7 @@ pub async fn run(
           continue
         }
       }
-      let result = @agent_tool.execute_tool_call(tool_call, tool_definitions())
+      let result = @agent_tool.execute_tool_call(tool_call, tools)
       let output = match result {
         Finish(answer) => {
           println("=== finished ===")

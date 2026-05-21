@@ -6,13 +6,7 @@ import {
 }
 
 // Values
-pub fn continue_result(String) -> ToolResult
-
-pub async fn execute_tool_call(AgentToolCall, Array[AgentToolDefinition]) -> ToolResult
-
-pub fn find_tool(Array[AgentToolDefinition], String) -> AgentToolDefinition?
-
-pub fn function_tools(Array[AgentToolDefinition]) -> Array[@deepseek.ToolDefinition]
+pub async fn execute_tool_call(AgentToolCall, Tools) -> ToolResult
 
 // Errors
 
@@ -34,12 +28,18 @@ pub(all) enum ToolExecutor {
   Async(async (Json) -> ToolResult)
   Sync((Json) -> ToolResult)
 }
-pub async fn ToolExecutor::run(Self, Json) -> ToolResult
 
-pub(all) struct ToolResult {
-  output : String
-  finished : Bool
+pub(all) enum ToolResult {
+  Continue(String)
+  Finish(String)
 }
+
+pub struct Tools {
+  by_name : Map[String, AgentToolDefinition]
+}
+pub fn Tools::Tools(Array[AgentToolDefinition]) -> Self raise
+pub fn Tools::find(Self, String) -> AgentToolDefinition?
+pub fn Tools::function_tools(Self) -> Array[@deepseek.ToolDefinition]
 
 // Type aliases
 
