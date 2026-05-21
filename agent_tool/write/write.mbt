@@ -1,6 +1,24 @@
 ///|
 /// Tool definition for `write`: overwrites `arguments.path` with
-/// `arguments.content`.
+/// `arguments.content`. Existing files are truncated; missing parent
+/// directories are not created.
+///
+/// ## Arguments
+/// - `path` (string, required): filesystem path to write.
+/// - `content` (string, required): text to write. The file is truncated
+///   before writing.
+///
+/// ## Result
+/// - `Continue("ok: wrote <n> chars to <path>")` on success — `n` is the
+///   character count of the written content.
+/// - `Continue("error writing <path>: <error>")` if the write fails
+///   (permission denied, missing parent directory, etc.).
+/// - `Continue("error: write requires arguments.content")` if `path` is
+///   present but `content` is missing or not a string.
+/// - `Continue("error: write requires arguments.path")` if `path` is missing
+///   from an object-shaped payload.
+/// - `Continue("error: write requires object arguments")` if the payload is
+///   not a JSON object.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
     "write",
@@ -42,6 +60,38 @@ async test "write creates a file with the given content" {
   assert_eq(output, "ok: wrote 11 chars to \{path}")
   let read_back = @fs.read_file(path).text()
   assert_eq(read_back, "hello write")
+}
+
+///|
+async test "write truncates existing files" {
+  let path = "/tmp/openseek-write-truncate.txt"
+  @fs.write_file(path, "long original content", create_mode=CreateOrTruncate)
+  let result = execute({ "path": path, "content": "short" })
+  guard result is Continue(output) else { fail("expected Continue") }
+  assert_eq(output, "ok: wrote 5 chars to \{path}")
+  let read_back = @fs.read_file(path).text()
+  assert_eq(read_back, "short")
+}
+
+///|
+async test "write accepts empty content" {
+  let path = "/tmp/openseek-write-empty.txt"
+  @fs.write_file(path, "previous", create_mode=CreateOrTruncate)
+  let result = execute({ "path": path, "content": "" })
+  guard result is Continue(output) else { fail("expected Continue") }
+  assert_eq(output, "ok: wrote 0 chars to \{path}")
+  let read_back = @fs.read_file(path).text()
+  assert_eq(read_back, "")
+}
+
+///|
+async test "write surfaces filesystem errors" {
+  let result = execute({
+    "path": "/tmp/openseek-missing-dir/does-not-exist.txt",
+    "content": "x",
+  })
+  guard result is Continue(output) else { fail("expected Continue") }
+  assert_true(output.contains("error writing"))
 }
 
 ///|

@@ -1,6 +1,16 @@
 ///|
 /// Tool definition for `finish`: ends the agent loop with `arguments.answer`
-/// as the final response.
+/// as the final response surfaced to the user.
+///
+/// ## Arguments
+/// - `answer` (string, required): the final answer text.
+///
+/// ## Result
+/// - `Finish(<answer>)` — stops the loop and returns the string. Missing or
+///   non-string `answer` produces `Finish("")`.
+///
+/// `finish` is the only built-in tool whose result is not a `Continue`. The
+/// loop always stops after `finish` runs, regardless of what comes back.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
     "finish",
@@ -31,14 +41,35 @@ test "finish returns Finish with the answer" {
 }
 
 ///|
-test "finish without answer returns empty Finish" {
+test "finish preserves multiline answers" {
+  let result = execute({ "answer": "line one\nline two" })
+  guard result is Finish(answer) else { fail("expected Finish") }
+  assert_eq(answer, "line one\nline two")
+}
+
+///|
+test "finish ignores extra fields on the payload" {
+  let result = execute({ "answer": "done", "extra": "ignored" })
+  guard result is Finish(answer) else { fail("expected Finish") }
+  assert_eq(answer, "done")
+}
+
+///|
+test "finish returns empty Finish when answer is missing" {
   let result = execute({})
   guard result is Finish(answer) else { fail("expected Finish") }
   assert_eq(answer, "")
 }
 
 ///|
-test "finish ignores non-object arguments" {
+test "finish returns empty Finish when answer is non-string" {
+  let result = execute({ "answer": 42 })
+  guard result is Finish(answer) else { fail("expected Finish") }
+  assert_eq(answer, "")
+}
+
+///|
+test "finish returns empty Finish on non-object arguments" {
   let result = execute(Json::null())
   guard result is Finish(answer) else { fail("expected Finish") }
   assert_eq(answer, "")

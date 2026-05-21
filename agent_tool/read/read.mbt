@@ -1,6 +1,18 @@
 ///|
-/// Tool definition for `read`: reads `arguments.path` as text and returns its
-/// contents.
+/// Tool definition for `read`: returns the contents of `arguments.path` as
+/// text.
+///
+/// ## Arguments
+/// - `path` (string, required): filesystem path to read.
+///
+/// ## Result
+/// - `Continue(<file contents>)` on success.
+/// - `Continue("error reading <path>: <error>")` if the read fails (missing
+///   file, permission denied, invalid UTF-8, etc.).
+/// - `Continue("error: read requires arguments.path")` if the payload is an
+///   object missing `path`.
+/// - `Continue("error: read requires object arguments")` if the payload is
+///   not a JSON object.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
     "read",
@@ -35,6 +47,25 @@ async test "read returns file contents" {
   let result = execute({ "path": path })
   guard result is Continue(output) else { fail("expected Continue") }
   assert_eq(output, "hello read")
+}
+
+///|
+async test "read returns empty string for an empty file" {
+  let path = "/tmp/openseek-read-empty.txt"
+  @fs.write_file(path, "", create_mode=CreateOrTruncate)
+  let result = execute({ "path": path })
+  guard result is Continue(output) else { fail("expected Continue") }
+  assert_eq(output, "")
+}
+
+///|
+async test "read preserves multiline content" {
+  let path = "/tmp/openseek-read-multiline.txt"
+  let content = "line one\nline two\nline three\n"
+  @fs.write_file(path, content, create_mode=CreateOrTruncate)
+  let result = execute({ "path": path })
+  guard result is Continue(output) else { fail("expected Continue") }
+  assert_eq(output, content)
 }
 
 ///|

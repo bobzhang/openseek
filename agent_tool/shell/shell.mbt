@@ -1,6 +1,21 @@
 ///|
 /// Tool definition for `shell`: runs `arguments.cmd` through `sh -c`,
-/// optionally in `arguments.cwd`, and returns the exit code and merged output.
+/// optionally in `arguments.cwd`, and returns the exit code plus merged
+/// stdout/stderr output.
+///
+/// ## Arguments
+/// - `cmd` (string, required): shell command line passed to `sh -c`.
+/// - `cwd` (string, optional): working directory the command runs in.
+///   An empty string is treated the same as a missing field.
+///
+/// ## Result
+/// - `Continue("exit=<code>\n<output>")` on success — exit code from `sh -c`
+///   followed by merged stdout/stderr.
+/// - `Continue("error running shell: ...")` when launching the process raises.
+/// - `Continue("error: shell requires arguments.cmd")` if `cmd` is missing
+///   from an otherwise object-shaped payload.
+/// - `Continue("error: shell requires object arguments")` if the payload is
+///   not a JSON object.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
     "shell",
@@ -56,6 +71,29 @@ async test "shell propagates non-zero exit codes" {
   let result = execute({ "cmd": "exit 7" })
   guard result is Continue(output) else { fail("expected Continue") }
   assert_true(output.contains("exit=7"))
+}
+
+///|
+async test "shell honors cwd when non-empty" {
+  let result = execute({ "cmd": "pwd", "cwd": "/tmp" })
+  guard result is Continue(output) else { fail("expected Continue") }
+  assert_true(output.contains("exit=0"))
+  assert_true(output.contains("/tmp"))
+}
+
+///|
+async test "shell treats empty cwd as missing" {
+  let result = execute({ "cmd": "echo cwdless", "cwd": "" })
+  guard result is Continue(output) else { fail("expected Continue") }
+  assert_true(output.contains("exit=0"))
+  assert_true(output.contains("cwdless"))
+}
+
+///|
+async test "shell merges stderr into the captured output" {
+  let result = execute({ "cmd": "echo oops 1>&2" })
+  guard result is Continue(output) else { fail("expected Continue") }
+  assert_true(output.contains("oops"))
 }
 
 ///|
