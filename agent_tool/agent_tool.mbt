@@ -58,15 +58,14 @@ pub async fn ToolExecutor::run(
 }
 
 ///|
-/// The outcome of running a tool. The agent loop branches on this:
-///
-/// - `Continue(message)` — append `message` as a `Tool(id)` chat message and
-///   keep looping. This is also the variant used for tool-reported errors;
-///   the model sees the error text and decides what to do next.
-/// - `Finish(answer)` — stop the loop and treat `answer` as the final result
-///   to surface to the user.
+/// The outcome of running a tool. The agent loop branches on this.
 pub(all) enum ToolResult {
+  /// Append the string as a `Tool(id)` chat message and keep looping. Tool-
+  /// reported errors use this variant too — the model sees the error text
+  /// and decides what to do next.
   Continue(String)
+  /// Stop the loop and treat the string as the final answer to surface to
+  /// the user.
   Finish(String)
 }
 
