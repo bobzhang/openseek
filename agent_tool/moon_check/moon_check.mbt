@@ -325,13 +325,9 @@ fn stable_moon_check_output(
   project : String,
   canonical : String,
 ) -> String {
-  let normalized = content.replace_all(
-    old=canonical,
-    new="<fixture>",
-  ).replace_all(
-    old=project,
-    new="<fixture>",
-  )
+  let normalized = content
+    .replace_all(old=canonical, new="<fixture>")
+    .replace_all(old=project, new="<fixture>")
   let stable_lines : Array[String] = []
   for line in normalized.split("\n") {
     if !line.has_prefix("failed: ") {
