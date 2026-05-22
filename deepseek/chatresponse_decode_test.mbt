@@ -33,7 +33,7 @@ test "chat response decode keeps first choice and usage" {
 test "chat response decode allows tool call without content or usage" {
   let response = decode_chat_response(
     (
-      #|{"choices":[{"message":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"read","arguments":"{\"path\":\"moon.mod.json\"}"}}]}}]}
+      #|{"choices":[{"message":{"tool_calls":[{"id":"call_1","type":"function","function":{"name":"read","arguments":"{\"path\":\"moon.mod\"}"}}]}}]}
     ),
   )
   debug_inspect(
@@ -42,13 +42,7 @@ test "chat response decode allows tool call without content or usage" {
       #|{
       #|  content: "",
       #|  reasoning_content: "",
-      #|  tool_calls: [
-      #|    {
-      #|      id: "call_1",
-      #|      name: "read",
-      #|      arguments: "{\"path\":\"moon.mod.json\"}",
-      #|    },
-      #|  ],
+      #|  tool_calls: [{ id: "call_1", name: "read", arguments: "{\"path\":\"moon.mod\"}" }],
       #|  usage: {
       #|    prompt_tokens: 0,
       #|    completion_tokens: 0,
@@ -65,7 +59,7 @@ test "chat response decode allows tool call without content or usage" {
 test "chat response decode keeps multiple tool calls in order" {
   let response = decode_chat_response(
     (
-      #|{"choices":[{"message":{"content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"read","arguments":"{\"path\":\"moon.mod.json\"}"}},{"id":"call_2","type":"function","function":{"name":"shell","arguments":"{\"cmd\":\"moon test deepseek\"}"}}]}}]}
+      #|{"choices":[{"message":{"content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"read","arguments":"{\"path\":\"moon.mod\"}"}},{"id":"call_2","type":"function","function":{"name":"shell","arguments":"{\"cmd\":\"moon test deepseek\"}"}}]}}]}
     ),
   )
   debug_inspect(
@@ -75,11 +69,7 @@ test "chat response decode keeps multiple tool calls in order" {
       #|  content: "",
       #|  reasoning_content: "",
       #|  tool_calls: [
-      #|    {
-      #|      id: "call_1",
-      #|      name: "read",
-      #|      arguments: "{\"path\":\"moon.mod.json\"}",
-      #|    },
+      #|    { id: "call_1", name: "read", arguments: "{\"path\":\"moon.mod\"}" },
       #|    {
       #|      id: "call_2",
       #|      name: "shell",

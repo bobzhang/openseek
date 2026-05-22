@@ -1315,6 +1315,7 @@ fn openseek_deepseek_addendum() -> String {
     #|- In blackbox tests, prefer `debug_inspect` for values that derive `Debug`; plain `inspect` requires `Show` and often triggers deprecated Show-based output.
     #|- When an enum type is already known from context, use unqualified constructors such as `Table(value)` instead of over-qualified `@pkg.Value::Table(value)`.
     #|- Avoid direct map indexing such as `table[key]` unless the key is guaranteed to exist; it can abort at runtime. Use `table.get(key)` when creating nested tables.
+    #|- Current MoonBit uses `moon.mod`; `moon.mod.json` is legacy. Treat copied guide references to `moon.mod.json` as legacy and prefer `moon.mod` in new or migrated projects.
     #|- For real workspace tasks, use the `moon_check` tool for `moon check` feedback. Use the shell tool's `cwd` argument for other commands instead of embedding repeated `cd ... &&` command strings.
   )
 }
