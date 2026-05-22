@@ -98,6 +98,21 @@
 - `moon_ide` impact: the agent did call `moon_ide doc @env.args` while diagnosing the CLI, and the prompt improved file organization compared with V1: it produced focused files such as `types.mbt`, `path_utils.mbt`, `regex.mbt`, `type_validator.mbt`, `object_validator.mbt`, and `combinators.mbt` instead of one monolith.
 - Remaining gaps: the first `moon_ide` call failed because the target workspace did not exist yet; the agent copied too much from the prior V1 workspace before creating a clean design; the first library check still happened only after many files were written; and command output remained uncapped, allowing a single debug run to blow the model context again.
 
+## DeepSeek V4 Pro JSON Schema Validator V3 With Output Caps
+
+- Status: succeeded as of 2026-05-22 23:33 CST.
+- Task: repeat the JSON Schema validator library plus native CLI task after adding command output caps and native CLI argument guidance.
+- Model setting: `DEEPSEEK_MODEL=deepseek-v4-pro`, `--max-steps 1000`.
+- Log: `.moonagent/eval_runs/results/openseek_json_schema_d4pro_reasoning_v3_output_caps.log`
+- Log size: 3,200 lines / 179,082 bytes (196K on disk).
+- Output workspace: `.moonagent/eval_runs/json_schema_validator_pro_v3_output_caps`
+- Result: the agent finished successfully at step 99 with parser/validator library, native CLI package, fixtures, README, generated interface, and passing validation.
+- Independent validation: `moon check --output-json .moonagent/eval_runs/json_schema_validator_pro_v3_output_caps` passed; default and native `moon test` both passed with 27 tests.
+- CLI smoke: valid fixture produced `{"valid":true,"errors":[]}`; invalid fixture produced a structured `minimum` error at `/age`.
+- Output-cap impact: the run did not hit a context-length error, did not inject generated native C into the transcript, and stayed two orders of magnitude smaller than the V1/V2 JSON Schema logs.
+- `moon_ide` impact: the agent used docs and definitions for `Json`, async `fs`, `io.Data`, and `&Data::text`; after inspecting the real `Data` source it repaired the native CLI file-read path.
+- Remaining gaps: the agent still waited until after a large schema file before its first meaningful check, spent many steps on MoonBit mutability and enum constructor mistakes, dumped full dependency/source ranges while diagnosing `Data`, and had a few brittle edit failures (`old_string not found`, missing edit path).
+
 ## Agent Performance Improvements To Investigate
 
 - Done: stream logs per step through async stdio instead of relying on buffered `println`. During this run the log stayed at 0 bytes for several minutes, then flushed in large chunks, which made live supervision difficult.
@@ -118,7 +133,8 @@
 - Reduce token-heavy file reads during eval: prefer package docs, focused ranges, or summaries over dumping full dependency sources and generated files into the log.
 - Teach the agent a staged validation invariant: after a package or test file is added, immediately rerun `moon check` before continuing, and treat a previously passing project as regressed until proven otherwise.
 - Add prompt guidance for `#|...` multiline strings in MoonBit tests: bind them to local names or wrap them in parentheses before passing as function arguments.
-- Add output caps/summarization for `moon_cmd` and shell-style command results. Two JSON Schema evals injected megabytes of generated native C into the model context and ended with context-length errors.
-- Add prompt or library guidance for native CLI arguments: in current native `moon run`, `@env.args()[0]` is the generated C/native path, so user arguments begin after that. This exact mistake broke both JSON Schema CLI runs.
+- Done: add output caps/summarization for `moon_cmd` and shell-style command results. The JSON Schema V3 log stayed small enough to finish, where V1/V2 ended with context-length errors after native output flooded the transcript.
+- Done: add prompt guidance for native CLI arguments. In current native `moon run`, `@env.args()[0]` can be the generated C/native path, so the CLI must drop the executable path before reading user files.
+- Add output caps or summaries for non-command tool outputs such as file reads and source/definition dumps. V3 still pasted full generated files and dependency source while diagnosing APIs.
 - Add a CLI semantic validation helper that can assert stdout is valid JSON and matches a small predicate, not only that `moon run` exits 0.
 - Make `moon_ide` failures clearer when `cwd` does not exist, or teach the prompt to create the workspace before semantic IDE calls against it.
