@@ -9,6 +9,7 @@ The package depends on:
 - `bobzhang/openseek/deepseek` for typed models, messages, roles, and tool
   definitions.
 - `bobzhang/openseek/deepseek/client` for HTTP chat requests.
+- `bobzhang/openseek/logger` for async stdout logging.
 - `bobzhang/openseek/agent_tool` for tool registries, typed tool output, and
   loop-control actions.
 - `moonbitlang/async/fs` and `moonbitlang/async/process` for local tool

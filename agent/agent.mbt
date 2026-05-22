@@ -17,7 +17,8 @@ pub async fn run(
   )
   let tools = tool_definitions() catch {
     error => {
-      std_logger <+ "agent setup failed: \{error}\n"
+      let error_log = log.error()
+      error_log <+ "agent setup failed: \{error}\n"
       return
     }
   }
@@ -26,15 +27,15 @@ pub async fn run(
     ChatMessage(User, content=task),
   ]
   for step in 0..<max_steps {
-    std_logger <+ "--- step \{step + 1} ---\n"
+    log <+ "--- step \{step + 1} ---\n"
     let response = client.chat(messages, tools=tools.function_tools())
     if response.content != "" {
-      std_logger <+ "agent: \{response.content}\n"
+      log <+ "agent: \{response.content}\n"
     }
     print_usage(response.usage)
     if response.tool_calls.length() == 0 {
-      std_logger <+ "=== finished ===\n"
-      std_logger <+ "\{response.content}\n"
+      log <+ "=== finished ===\n"
+      log <+ "\{response.content}\n"
       return
     }
     let reasoning_content = match response.reasoning_content {
@@ -51,7 +52,8 @@ pub async fn run(
     for native_call in response.tool_calls {
       let tool_call = @agent_tool.AgentToolCall(native_call) catch {
         error => {
-          std_logger <+ "tool: error: \{error}\n"
+          let error_log = log.error()
+          error_log <+ "tool: error: \{error}\n"
           messages.push(
             ChatMessage(Tool(native_call.id), content="error: \{error}"),
           )
@@ -61,45 +63,32 @@ pub async fn run(
       let result = @agent_tool.execute_tool_call(tool_call, tools)
       let output = match result {
         Control(Finish(answer)) => {
-          std_logger <+ "=== finished ===\n"
-          std_logger <+ "\{answer}\n"
+          log <+ "=== finished ===\n"
+          log <+ "\{answer}\n"
           return
         }
         Control(Abort(reason)) => {
-          std_logger <+ "=== aborted ===\n"
-          std_logger <+ "\{reason}\n"
+          let warn_log = log.warn()
+          warn_log <+ "=== aborted ===\n"
+          warn_log <+ "\{reason}\n"
           return
         }
         Respond(output) => output
       }
       let label = if output.is_error { "tool error" } else { "tool" }
-      std_logger <+ "\{label}: \{output.content}\n"
+      log <+ "\{label}: \{output.content}\n"
       messages.push(ChatMessage(Tool(native_call.id), content=output.content))
     }
   }
-  std_logger <+ "=== max steps exhausted ===\n"
+  let warn_log = log.warn()
+  warn_log <+ "=== max steps exhausted ===\n"
 }
 
 ///|
-priv struct LogSink {
-  output : @stdio.Output
-}
-
-///|
-let std_logger : LogSink = { output: @stdio.stdout }
-
-///|
-async fn LogSink::write_string(self : LogSink, text : String) -> Unit {
-  self.output.write(text)
-}
-
-///|
-async fn[A : Show] LogSink::write(self : LogSink, value : A) -> Unit {
-  self.write_string(value.to_string())
-}
+let log : @logger.Logger = @logger.stdout(min_level=INFO)
 
 ///|
 async fn print_usage(usage : @deepseek.Usage) -> Unit {
-  std_logger <+
+  log <+
     "usage: prompt=\{usage.prompt_tokens} completion=\{usage.completion_tokens} cache_hit=\{usage.prompt_cache_hit_tokens} cache_miss=\{usage.prompt_cache_miss_tokens}\n"
 }

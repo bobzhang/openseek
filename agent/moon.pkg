@@ -8,7 +8,7 @@ import {
   "bobzhang/openseek/agent_tool/write",
   "bobzhang/openseek/deepseek",
   "bobzhang/openseek/deepseek/client",
-  "moonbitlang/async/stdio",
+  "bobzhang/openseek/logger",
   "moonbitlang/core/json",
 }
 
