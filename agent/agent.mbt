@@ -81,13 +81,30 @@ pub async fn run(
 }
 
 ///|
+priv struct LogSink {
+  output : @stdio.Output
+}
+
+///|
+let std_logger : LogSink = { output: @stdio.stdout }
+
+///|
+async fn LogSink::write_string(self : LogSink, text : String) -> Unit {
+  self.output.write(text)
+}
+
+///|
+async fn[A : Show] LogSink::write(self : LogSink, value : A) -> Unit {
+  self.write_string(value.to_string())
+}
+
+///|
 async fn log_line(text : String) -> Unit {
-  @stdio.stdout.write(text + "\n")
+  std_logger <+ "\{text}\n"
 }
 
 ///|
 async fn print_usage(usage : @deepseek.Usage) -> Unit {
-  log_line(
-    "usage: prompt=\{usage.prompt_tokens} completion=\{usage.completion_tokens} cache_hit=\{usage.prompt_cache_hit_tokens} cache_miss=\{usage.prompt_cache_miss_tokens}",
-  )
+  std_logger <+
+    "usage: prompt=\{usage.prompt_tokens} completion=\{usage.completion_tokens} cache_hit=\{usage.prompt_cache_hit_tokens} cache_miss=\{usage.prompt_cache_miss_tokens}\n"
 }
