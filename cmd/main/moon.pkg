@@ -4,6 +4,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/core/argparse",
   "moonbitlang/core/env",
+  "moonbitlang/core/string",
 }
 
 warnings = "+unnecessary_annotation"

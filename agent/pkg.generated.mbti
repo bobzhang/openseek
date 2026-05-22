@@ -6,7 +6,7 @@ import {
 }
 
 // Values
-pub async fn run(String, @deepseek.Model, String) -> Unit
+pub async fn run(String, @deepseek.Model, String, max_steps? : Int) -> Unit
 
 // Errors
 

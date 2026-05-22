@@ -16,7 +16,8 @@ The package depends on:
 
 ## API Shape
 
-- `run(api_key, model, task)`: run the agent loop for one natural-language task.
+- `run(api_key, model, task, max_steps?)`: run the agent loop for one
+  natural-language task.
 
 `run` creates a DeepSeek client, starts a conversation with a system prompt and
 user task, sends native function tool definitions on each turn, executes any
@@ -83,9 +84,10 @@ improving:
   needed addendum guidance for native CLI imports, blackbox `Debug` tests,
   unqualified enum constructors under known types, and avoiding panicking
   `Map::at` when building nested tables.
-- Long runs should be observable while they are running; buffered stdout makes
-  stalled runs look silent until a large chunk of logs appears.
+- Long runs should be observable while they are running. The agent writes loop
+  logs through `moonbitlang/async/stdio` instead of `println` so piped runs
+  such as `2>&1 | tee run.log` receive step output promptly.
 - Real workspace commands need a first-class working directory. The `shell`
   tool now accepts optional `cwd` to avoid repeated ad hoc `cd` command strings.
-- Step limits should eventually be configurable from the CLI; real coding tasks
-  can exceed a fixed small budget before validation succeeds.
+- The default step limit is 1000, and the CLI can override it with
+  `--max-steps` or `OPENSEEK_MAX_STEPS`.
