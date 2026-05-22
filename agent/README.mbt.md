@@ -40,7 +40,7 @@ has limited MoonBit knowledge compared with mainstream languages.
 
 ## Tools
 
-The agent exposes seven local tools to DeepSeek:
+The agent exposes eight local tools to DeepSeek:
 
 - `shell`: runs `arguments.cmd` through `sh -c`, optionally in `arguments.cwd`,
   and returns exit code plus merged output.
@@ -51,6 +51,8 @@ The agent exposes seven local tools to DeepSeek:
   `arguments.cwd`, and returns exit code plus merged output.
 - `moon_cmd`: runs selected `moon` subcommands directly, optionally in
   `arguments.cwd`, and returns exit code plus merged output.
+- `moon_ide`: runs read-only `moon ide` semantic navigation commands directly,
+  optionally in `arguments.cwd`, and returns exit code plus capped output.
 - `finish`: ends the task with `arguments.answer`.
 
 Tool-call arguments are parsed from DeepSeek's raw JSON argument string and then
@@ -103,3 +105,9 @@ improving:
 - `moon_cmd` requires `test_update_kind` and `test_update_reason` for
   `moon test --update`; run plain `moon test` first and only update snapshots
   after deciding the failure is not a behavior bug.
+- Use `moon_ide doc` before unfamiliar MoonBit APIs and `moon_ide outline`,
+  `peek_def`, or `find_references` before editing existing packages.
+- MoonBit packages are flat like Go packages: files in the same package share a
+  namespace, and file names do not create importable modules. Split generated
+  code into small cohesive files for reviewability, but never refer to those
+  files as modules.
