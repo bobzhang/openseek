@@ -24,6 +24,7 @@ actual command line and process result.
 | `program_args` | string array | no | Arguments after `--`; only valid with `command = "run"`. |
 | `test_update_kind` | string | for `moon test --update` | `stale_snapshot` or `intentional_output_change`. |
 | `test_update_reason` | string | for `moon test --update` | Short explanation of the prior plain `moon test` failure review. |
+| `max_output_chars` | number | no | Defaults to 12000, capped at 50000. Truncated output is a tool error. |
 
 `moon test --update` is guarded deliberately. Run plain `moon test` first,
 review the failure, and only pass `--update` when it is a stale snapshot or an
@@ -32,10 +33,12 @@ intentional output change. Do not use `--update` for behavior bugs.
 ## Action
 
 The action is always `Respond(ToolOutput(...))`. `is_error` is true when the
-direct `moon` process exits non-zero, when argument validation fails, or when
-the process cannot be launched. The string body has one of these shapes:
+direct `moon` process exits non-zero, when argument validation fails, when
+output is truncated, or when the process cannot be launched. The string body
+has one of these shapes:
 
 - `"cwd=<cwd>\ncommand=moon <subcommand> ...\nexit=<code>\n<output>"`.
+- `"cwd=<cwd>\ncommand=moon <subcommand> ...\nexit=<code>\ntruncated=true\noutput_chars=<n>\nshown_chars=<n>\n<output-prefix>"`.
 - `"error running moon_cmd: <error>"`.
 - `"error: moon_cmd requires <field description>"`.
 
@@ -51,6 +54,7 @@ test "moon_cmd tool advertises run validation fields" {
   assert_true(text.contains("\"command\""))
   assert_true(text.contains("\"program_args\""))
   assert_true(text.contains("\"test_update_kind\""))
+  assert_true(text.contains("\"max_output_chars\""))
 }
 ```
 

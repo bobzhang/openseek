@@ -11,16 +11,19 @@ and any other workspace task the other built-in tools don't cover.
 | ---- | ------ | -------- | ----- |
 | `cmd` | string | yes | Passed as the single argument to `sh -c`. |
 | `cwd` | string | no  | Working directory. An empty string is treated as missing. |
+| `max_output_chars` | number | no | Defaults to 12000, capped at 50000. Truncated output is a tool error. |
 
 ## Action
 
 The action is always `Respond(ToolOutput(...))` — the agent loop forwards
 `ToolOutput.content` to the model as a tool-call response and never finishes
 from a `shell` invocation. `is_error` is `true` for launch failures, invalid
-arguments, and non-zero shell exit codes. The string body has one of these
-shapes:
+arguments, non-zero shell exit codes, and output truncation. The string body
+has one of these shapes:
 
 - `"exit=<code>\n<stdout/stderr merged>"` — normal completion.
+- `"exit=<code>\ntruncated=true\noutput_chars=<n>\nshown_chars=<n>\n<output-prefix>"` —
+  the process completed but output was capped before sending it to the model.
 - `"error running shell: <error>"` — `sh -c` failed to launch (rare; usually
   a process subsystem error).
 - `"error: shell requires arguments.cmd"` — payload was an object but had no
@@ -40,6 +43,7 @@ test "shell tool advertises the expected schema" {
   let JsonSchema(schema) = tool.schema
   let text = schema.stringify()
   assert_true(text.contains("\"cmd\""))
+  assert_true(text.contains("\"max_output_chars\""))
   assert_true(text.contains("\"required\""))
 }
 ```

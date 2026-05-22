@@ -1311,7 +1311,7 @@ fn openseek_deepseek_addendum() -> String {
     #|- String indexing with `s[i]` returns `UInt16`; use `s.get_char(i)` for `Char?`, `s[start:end].to_owned()` for owned substrings, or iterate with `for ch in s`.
     #|- Use `()` for unit. Do not write `{}` when a branch should do nothing.
     #|- Do not leave `while` as the final expression of a function returning `Result`; put the final `Ok(...)`/`Err(...)` after the loop or return from explicit branches.
-    #|- For native CLIs, import `moonbitlang/core/env`, `moonbitlang/async/fs`, and `moonbitlang/async/io`; use `@env.args()` and `@fs.read_file(path).text()`.
+    #|- For native CLIs, import `moonbitlang/core/env`, `moonbitlang/async/fs`, and `moonbitlang/async/io`; use `@env.args()` and `@fs.read_file(path).text()`. In native `moon run`, `@env.args()[0]` can be the generated native/C entry path rather than the first user argument; inspect args with a tiny smoke test or drop that executable path before reading `schema.json`, `input.toml`, or other user files.
     #|- In blackbox tests, prefer `debug_inspect` for values that derive `Debug`; plain `inspect` requires `Show` and often triggers deprecated Show-based output.
     #|- When an enum type is already known from context, use unqualified constructors such as `Table(value)` instead of over-qualified `@pkg.Value::Table(value)`.
     #|- Avoid direct map indexing such as `table[key]` unless the key is guaranteed to exist; it can abort at runtime. Use `table.get(key)` when creating nested tables.
@@ -1319,7 +1319,7 @@ fn openseek_deepseek_addendum() -> String {
     #|- For real workspace tasks, use `moon_ide doc` before relying on unfamiliar MoonBit APIs. Use `moon_ide outline`, `moon_ide peek_def`, and `moon_ide find_references` before editing existing MoonBit packages instead of guessing from text search alone.
     #|- MoonBit packages are flat like Go packages: all `.mbt` files beside one `moon.pkg` share a single namespace, and file names do not create modules, import paths, or qualified names. Split code into small cohesive files for reviewability, but never refer to a file as a module.
     #|- Avoid one large generated file or one huge write. Add focused files or blocks, run `moon_check` or `moon_cmd check` after each package-level step, and only continue once the current package checks.
-    #|- For real workspace tasks, use the `moon_check` tool for `moon check` feedback. Use `moon_cmd` for exact `moon test`, `moon run`, `moon info`, `moon fmt`, and README command validation; it runs `moon` directly and preserves the real exit code. Run plain `moon test` before `moon test --update`; only update snapshots after reviewing the failure as `stale_snapshot` or `intentional_output_change`, and never for behavior bugs. Use the shell tool's `cwd` argument only for commands outside the supported MoonBit command set instead of embedding repeated `cd ... &&` command strings.
+    #|- For real workspace tasks, use the `moon_check` tool for `moon check` feedback. Use `moon_cmd` for exact `moon test`, `moon run`, `moon info`, `moon fmt`, and README command validation; it runs `moon` directly and preserves the real exit code. Run plain `moon test` before `moon test --update`; only update snapshots after reviewing the failure as `stale_snapshot` or `intentional_output_change`, and never for behavior bugs. `moon_cmd` and `shell` truncate large output and report truncation as a tool error; if a CLI smoke test is truncated or emits generated native/C output, fix the CLI or command rather than increasing the output cap. Use the shell tool's `cwd` argument only for commands outside the supported MoonBit command set instead of embedding repeated `cd ... &&` command strings.
   )
 }
 
@@ -1332,5 +1332,6 @@ test "system prompt includes moonbit guide" {
   assert_true(prompt.contains("cache-friendly"))
   assert_true(prompt.contains("moon_ide outline"))
   assert_true(prompt.contains("flat like Go packages"))
+  assert_true(prompt.contains("generated native/C entry path"))
   assert_true(prompt.contains("OpenSeek DeepSeek Addendum"))
 }

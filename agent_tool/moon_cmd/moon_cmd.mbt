@@ -21,6 +21,9 @@
 ///   `intentional_output_change`.
 /// - `test_update_reason` (string, optional): required when running
 ///   `moon test --update`; summarize the prior failure review.
+/// - `max_output_chars` (number, optional): defaults to 12000 and is capped at
+///   50000. Truncated output is reported as a tool error even when the process
+///   exits zero.
 ///
 /// ## Result
 /// - `Respond(ToolOutput("cwd=...\ncommand=...\nexit=<code>\n<output>",
@@ -55,12 +58,19 @@ pub fn definition() -> @agent_tool.AgentToolDefinition {
           "enum": ["stale_snapshot", "intentional_output_change"],
         },
         "test_update_reason": { "type": "string" },
+        "max_output_chars": { "type": "number" },
       },
       "required": ["command"],
     }),
     Async(execute),
   )
 }
+
+///|
+let default_max_output_chars : Int = 12000
+
+///|
+let hard_max_output_chars : Int = 50000
 
 ///|
 priv struct MoonCommandOptions {
@@ -72,6 +82,7 @@ priv struct MoonCommandOptions {
   program_args : Array[String]
   test_update_kind : String?
   test_update_reason : String?
+  max_output_chars : Int
 }
 
 ///|
@@ -121,6 +132,9 @@ fn parse_options(fields : Map[String, Json]) -> MoonCommandOptions raise {
   }
   let test_update_kind = optional_string(fields, "test_update_kind")
   let test_update_reason = optional_string(fields, "test_update_reason")
+  let max_output_chars = optional_positive_int(
+    fields, "max_output_chars", default_max_output_chars,
+  )
   validate_test_update_guard(
     command, args, test_update_kind, test_update_reason,
   )
@@ -133,6 +147,7 @@ fn parse_options(fields : Map[String, Json]) -> MoonCommandOptions raise {
     program_args,
     test_update_kind,
     test_update_reason,
+    max_output_chars: cap_max_output_chars(max_output_chars),
   }
 }
 
@@ -201,6 +216,34 @@ fn optional_string_array(
     _ => fail("arguments.\{name} to be an array of strings")
   }
   values
+}
+
+///|
+fn optional_positive_int(
+  fields : Map[String, Json],
+  name : String,
+  default : Int,
+) -> Int raise {
+  match fields.get(name) {
+    Some(Number(value, ..)) => {
+      let int_value = value.to_int()
+      if int_value <= 0 {
+        fail("arguments.\{name} to be a positive number")
+      }
+      int_value
+    }
+    Some(Null) | None => default
+    _ => fail("arguments.\{name} to be a number")
+  }
+}
+
+///|
+fn cap_max_output_chars(value : Int) -> Int {
+  if value > hard_max_output_chars {
+    hard_max_output_chars
+  } else {
+    value
+  }
 }
 
 ///|
@@ -308,10 +351,36 @@ async fn moon_cmd(options : MoonCommandOptions) -> @agent_tool.ToolAction {
     (Some(kind), Some(reason)) => "\nsnapshot_update=\{kind}: \{reason}"
     _ => ""
   }
+  let body = output.text()
+  let capped = cap_text(body, options.max_output_chars)
+  let truncation = truncation_header(body, options.max_output_chars)
   @agent_tool.ToolAction::respond(
-    "cwd=\{cwd_text}\ncommand=moon \{args.join(" ")}\{update_review}\nexit=\{code}\n\{output.text()}",
-    is_error=code != 0,
+    "cwd=\{cwd_text}\ncommand=moon \{args.join(" ")}\{update_review}\nexit=\{code}\{truncation}\n\{capped}",
+    is_error=code != 0 || is_truncated(body, options.max_output_chars),
   )
+}
+
+///|
+fn cap_text(content : String, max_chars : Int) -> String {
+  if content.length() <= max_chars {
+    content
+  } else {
+    content[:max_chars].to_owned()
+  }
+}
+
+///|
+fn is_truncated(content : String, max_chars : Int) -> Bool {
+  content.length() > max_chars
+}
+
+///|
+fn truncation_header(content : String, max_chars : Int) -> String {
+  if is_truncated(content, max_chars) {
+    "\ntruncated=true\noutput_chars=\{content.length()}\nshown_chars=\{max_chars}"
+  } else {
+    ""
+  }
 }
 
 ///|
@@ -324,6 +393,7 @@ test "moon_cmd advertises expected schema" {
   assert_true(text.contains("\"program_args\""))
   assert_true(text.contains("\"target\""))
   assert_true(text.contains("\"test_update_kind\""))
+  assert_true(text.contains("\"max_output_chars\""))
 }
 
 ///|
@@ -337,6 +407,7 @@ test "moon_cmd builds direct moon command arguments" {
     program_args: ["input.toml", "--pretty"],
     test_update_kind: None,
     test_update_reason: None,
+    max_output_chars: default_max_output_chars,
   }
   assert_eq(
     options.command_args().join("|"),
@@ -431,6 +502,22 @@ test "moon_cmd accepts classified moon test update" {
 }
 
 ///|
+test "moon_cmd parses and caps output limit" {
+  let options = parse_options({ "command": "check", "max_output_chars": 999999 })
+  assert_eq(options.max_output_chars, hard_max_output_chars)
+}
+
+///|
+test "moon_cmd records truncation metadata" {
+  assert_eq(cap_text("abcdef", 3), "abc")
+  assert_true(is_truncated("abcdef", 3))
+  assert_eq(
+    truncation_header("abcdef", 3),
+    "\ntruncated=true\noutput_chars=6\nshown_chars=3",
+  )
+}
+
+///|
 async test "moon_cmd rejects non-object arguments" {
   let result = execute(Json::null())
   guard result is Respond(output) else { fail("expected Respond") }
@@ -467,6 +554,31 @@ async test "moon_cmd validates a native fixture CLI when target is explicit" {
   )
   assert_true(stable.contains("exit=0"))
   assert_true(stable.contains("moon-cmd-ok"))
+}
+
+///|
+async test "moon_cmd truncates oversized successful output as a tool error" {
+  let project = copy_fixture_project("native_cli_project")
+  let canonical = @fs.realpath(project)
+  let result = execute({
+    "cwd": project,
+    "command": "run",
+    "target": "native",
+    "path": "cmd/main",
+    "program_args": ["input.toml"],
+    "max_output_chars": 10,
+  })
+  let _ = @fs.rmdir(project, recursive=true) catch { _ => () }
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_true(output.is_error)
+  let stable = stable_moon_cmd_output(output.content, project, canonical)
+  assert_true(stable.contains("cwd=<fixture>"))
+  assert_true(
+    stable.contains("command=moon run --target native cmd/main -- input.toml"),
+  )
+  assert_true(stable.contains("exit=0"))
+  assert_true(stable.contains("truncated=true"))
+  assert_true(stable.contains("shown_chars=10"))
 }
 
 ///|
