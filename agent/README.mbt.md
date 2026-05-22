@@ -38,11 +38,12 @@ has limited MoonBit knowledge compared with mainstream languages.
 
 ## Tools
 
-The agent exposes four local tools to DeepSeek:
+The agent exposes five local tools to DeepSeek:
 
 - `shell`: runs `arguments.cmd` through `sh -c`, optionally in `arguments.cwd`,
   and returns exit code plus merged output.
 - `read`: reads `arguments.path` as text.
+- `edit`: replaces exact text in `arguments.path`.
 - `write`: overwrites `arguments.path` with `arguments.content`.
 - `finish`: ends the task with `arguments.answer`.
 
@@ -52,7 +53,7 @@ validated by the dispatcher before execution.
 ## Operational Notes
 
 This package is intended for trusted local automation. The `shell` tool can run
-arbitrary commands, and the `write` tool can overwrite files visible to the
+arbitrary commands, while `edit` and `write` can modify files visible to the
 process. Use the CLI package when invoking it as an application.
 
 Run the package tests with:
