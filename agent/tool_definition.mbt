@@ -10,6 +10,7 @@ fn tool_definitions() -> @agent_tool.Tools raise {
     @edit.definition(),
     @write.definition(),
     @moon_check.definition(),
+    @moon_cmd.definition(),
     @finish.definition(),
   ])
 }
@@ -18,12 +19,13 @@ fn tool_definitions() -> @agent_tool.Tools raise {
 test "agent registers the expected tool names" {
   let tools = tool_definitions()
   let function_tools = tools.function_tools()
-  assert_eq(function_tools.length(), 6)
+  assert_eq(function_tools.length(), 7)
   let names = [ for t in function_tools => t.name ]
   assert_true(names.contains("shell"))
   assert_true(names.contains("read"))
   assert_true(names.contains("edit"))
   assert_true(names.contains("write"))
   assert_true(names.contains("moon_check"))
+  assert_true(names.contains("moon_cmd"))
   assert_true(names.contains("finish"))
 }

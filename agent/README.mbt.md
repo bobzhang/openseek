@@ -40,7 +40,7 @@ has limited MoonBit knowledge compared with mainstream languages.
 
 ## Tools
 
-The agent exposes six local tools to DeepSeek:
+The agent exposes seven local tools to DeepSeek:
 
 - `shell`: runs `arguments.cmd` through `sh -c`, optionally in `arguments.cwd`,
   and returns exit code plus merged output.
@@ -48,6 +48,8 @@ The agent exposes six local tools to DeepSeek:
 - `edit`: replaces exact text in `arguments.path`.
 - `write`: overwrites `arguments.path` with `arguments.content`.
 - `moon_check`: runs `moon check --output-json` directly, optionally in
+  `arguments.cwd`, and returns exit code plus merged output.
+- `moon_cmd`: runs selected `moon` subcommands directly, optionally in
   `arguments.cwd`, and returns exit code plus merged output.
 - `finish`: ends the task with `arguments.answer`.
 
@@ -96,3 +98,5 @@ improving:
   `--max-steps` or `OPENSEEK_MAX_STEPS`.
 - MoonBit validation should prefer the `moon_check` tool over shell pipelines
   when the task only needs `moon check` feedback.
+- Use `moon_cmd` for exact end-to-end MoonBit command validation, especially
+  `moon test`, `moon run`, `moon info`, `moon fmt`, and README command checks.

@@ -45,8 +45,9 @@ filesystem, and process APIs.
 ## Agent CLI
 
 The `cmd/main` package is the CLI entry point. It parses arguments and runs the
-agent package. The agent sends DeepSeek native function tools and supports six
-local tools: `shell`, `read`, `edit`, `write`, `moon_check`, and `finish`.
+agent package. The agent sends DeepSeek native function tools and supports
+seven local tools: `shell`, `read`, `edit`, `write`, `moon_check`, `moon_cmd`,
+and `finish`.
 
 ```bash
 export DEEPSEEK=sk-...

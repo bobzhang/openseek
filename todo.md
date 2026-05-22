@@ -50,6 +50,6 @@
 - When an evaluation allows local references, surface nearby working examples such as `.moonagent/toml_parser_demo*` before implementing from scratch.
 - Do not hide validation failures behind successful shell exits. In the retry, one check-like command returned `exit=0` while printing compiler failures, which led the loop to continue from a false success signal.
 - Keep module/package manifests and dependency assumptions under validation. The retry repeatedly mis-modeled `@json.Json`, `String::split`, suberror constructor labels, and `@string`/`@strconv` parsing APIs.
-- Add native CLI ergonomics checks: when a package has `supported_targets = ["native"]`, either set module `preferred_target = "native"` or validate README commands with explicit `--target native`.
-- Add a direct `moon_test`/`moon_run` style tool or extend `moon_check` so validation commands cannot be masked by shell status handling.
+- Done: add `moon_cmd` for direct `moon test`, `moon run`, `moon info`, `moon fmt`, and `moon build` validation without shell status masking.
+- Add native CLI ergonomics checks in agent policy: when a package has `supported_targets = ["native"]`, either set module `preferred_target = "native"` or validate README commands with `moon_cmd` and explicit `--target native`.
 - Reduce token-heavy file reads during eval: prefer package docs, focused ranges, or summaries over dumping full dependency sources and generated files into the log.

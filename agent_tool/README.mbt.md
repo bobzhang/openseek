@@ -11,6 +11,7 @@ Concrete built-in tools live in subpackages:
 - `agent_tool/write`
 - `agent_tool/shell`
 - `agent_tool/moon_check`
+- `agent_tool/moon_cmd`
 - `agent_tool/finish`
 
 ## API Shape
