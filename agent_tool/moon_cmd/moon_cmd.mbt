@@ -16,6 +16,11 @@
 /// - `paths` (array of strings, optional): additional package/file/main paths.
 /// - `program_args` (array of strings, optional): arguments after `--`; only
 ///   valid for `run`.
+/// - `test_update_kind` (string, optional): required when running
+///   `moon test --update`; use `stale_snapshot` or
+///   `intentional_output_change`.
+/// - `test_update_reason` (string, optional): required when running
+///   `moon test --update`; summarize the prior failure review.
 ///
 /// ## Result
 /// - `Respond(ToolOutput("cwd=...\ncommand=...\nexit=<code>\n<output>",
@@ -45,6 +50,11 @@ pub fn definition() -> @agent_tool.AgentToolDefinition {
         "path": { "type": "string" },
         "paths": { "type": "array", "items": { "type": "string" } },
         "program_args": { "type": "array", "items": { "type": "string" } },
+        "test_update_kind": {
+          "type": "string",
+          "enum": ["stale_snapshot", "intentional_output_change"],
+        },
+        "test_update_reason": { "type": "string" },
       },
       "required": ["command"],
     }),
@@ -60,6 +70,8 @@ priv struct MoonCommandOptions {
   args : Array[String]
   paths : Array[String]
   program_args : Array[String]
+  test_update_kind : String?
+  test_update_reason : String?
 }
 
 ///|
@@ -107,7 +119,21 @@ fn parse_options(fields : Map[String, Json]) -> MoonCommandOptions raise {
   if program_args.length() > 0 && command != "run" {
     fail("arguments.program_args only with command run")
   }
-  { command, cwd, target, args, paths, program_args }
+  let test_update_kind = optional_string(fields, "test_update_kind")
+  let test_update_reason = optional_string(fields, "test_update_reason")
+  validate_test_update_guard(
+    command, args, test_update_kind, test_update_reason,
+  )
+  {
+    command,
+    cwd,
+    target,
+    args,
+    paths,
+    program_args,
+    test_update_kind,
+    test_update_reason,
+  }
 }
 
 ///|
@@ -201,6 +227,47 @@ fn validate_target_supported(command : String) -> Unit raise {
 }
 
 ///|
+fn validate_test_update_guard(
+  command : String,
+  args : Array[String],
+  kind : String?,
+  reason : String?,
+) -> Unit raise {
+  guard uses_test_update(command, args) else { return }
+  match kind {
+    Some("stale_snapshot") | Some("intentional_output_change") => ()
+    Some(_) =>
+      fail(
+        "arguments.test_update_kind to be stale_snapshot or intentional_output_change for moon test --update",
+      )
+    None =>
+      fail(
+        "arguments.test_update_kind for moon test --update after reviewing a plain moon test failure; do not use --update for behavior bugs",
+      )
+  }
+  match reason {
+    Some(_) => ()
+    None =>
+      fail(
+        "arguments.test_update_reason for moon test --update after reviewing a plain moon test failure",
+      )
+  }
+}
+
+///|
+fn uses_test_update(command : String, args : Array[String]) -> Bool {
+  if command != "test" {
+    return false
+  }
+  for arg in args {
+    if arg == "--update" || arg == "-u" {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn MoonCommandOptions::command_args(self : MoonCommandOptions) -> Array[String] {
   let args : Array[String] = [self.command]
   match self.target {
@@ -236,8 +303,13 @@ async fn moon_cmd(options : MoonCommandOptions) -> @agent_tool.ToolAction {
     Some(cwd) => cwd
     None => "."
   }
+  let update_review = match
+    (options.test_update_kind, options.test_update_reason) {
+    (Some(kind), Some(reason)) => "\nsnapshot_update=\{kind}: \{reason}"
+    _ => ""
+  }
   @agent_tool.ToolAction::respond(
-    "cwd=\{cwd_text}\ncommand=moon \{args.join(" ")}\nexit=\{code}\n\{output.text()}",
+    "cwd=\{cwd_text}\ncommand=moon \{args.join(" ")}\{update_review}\nexit=\{code}\n\{output.text()}",
     is_error=code != 0,
   )
 }
@@ -251,6 +323,7 @@ test "moon_cmd advertises expected schema" {
   assert_true(text.contains("\"command\""))
   assert_true(text.contains("\"program_args\""))
   assert_true(text.contains("\"target\""))
+  assert_true(text.contains("\"test_update_kind\""))
 }
 
 ///|
@@ -262,6 +335,8 @@ test "moon_cmd builds direct moon command arguments" {
     args: ["--quiet"],
     paths: ["cmd/main"],
     program_args: ["input.toml", "--pretty"],
+    test_update_kind: None,
+    test_update_reason: None,
   }
   assert_eq(
     options.command_args().join("|"),
@@ -273,14 +348,14 @@ test "moon_cmd builds direct moon command arguments" {
 test "moon_cmd parses singular and plural argument fields" {
   let options = parse_options({
     "command": "test",
-    "arg": "--update",
-    "args": ["--filter", "parser::*"],
+    "arg": "--filter",
+    "args": ["parser::*", "--quiet"],
     "path": "toml",
     "paths": ["README.mbt.md"],
   })
   assert_eq(
     options.command_args().join("|"),
-    "test|--update|--filter|parser::*|toml|README.mbt.md",
+    "test|--filter|parser::*|--quiet|toml|README.mbt.md",
   )
 }
 
@@ -318,11 +393,57 @@ test "moon_cmd rejects target for fmt" {
 }
 
 ///|
+test "moon_cmd rejects moon test update without classification" {
+  let _ = parse_options({ "command": "test", "arg": "--update" }) catch {
+    error => {
+      assert_true("\{error}".contains("arguments.test_update_kind"))
+      return
+    }
+  }
+  fail("unclassified test update parsed")
+}
+
+///|
+test "moon_cmd rejects moon test update without reason" {
+  let _ = parse_options({
+    "command": "test",
+    "arg": "--update",
+    "test_update_kind": "stale_snapshot",
+  }) catch {
+    error => {
+      assert_true("\{error}".contains("arguments.test_update_reason"))
+      return
+    }
+  }
+  fail("unexplained test update parsed")
+}
+
+///|
+test "moon_cmd accepts classified moon test update" {
+  let options = parse_options({
+    "command": "test",
+    "arg": "--update",
+    "test_update_kind": "stale_snapshot",
+    "test_update_reason": "plain moon test only reported snapshot diffs",
+  })
+  assert_eq(options.command_args().join("|"), "test|--update")
+  assert_true(options.test_update_kind is Some("stale_snapshot"))
+}
+
+///|
 async test "moon_cmd rejects non-object arguments" {
   let result = execute(Json::null())
   guard result is Respond(output) else { fail("expected Respond") }
   assert_eq(output.content, "error: moon_cmd requires object arguments")
   assert_true(output.is_error)
+}
+
+///|
+async test "moon_cmd rejects unclassified test update before process launch" {
+  let result = execute({ "command": "test", "arg": "--update" })
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_true(output.is_error)
+  assert_true(output.content.contains("arguments.test_update_kind"))
 }
 
 ///|

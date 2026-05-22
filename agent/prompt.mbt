@@ -1316,7 +1316,7 @@ fn openseek_deepseek_addendum() -> String {
     #|- When an enum type is already known from context, use unqualified constructors such as `Table(value)` instead of over-qualified `@pkg.Value::Table(value)`.
     #|- Avoid direct map indexing such as `table[key]` unless the key is guaranteed to exist; it can abort at runtime. Use `table.get(key)` when creating nested tables.
     #|- Current MoonBit uses `moon.mod`; `moon.mod.json` is legacy. Treat copied guide references to `moon.mod.json` as legacy and prefer `moon.mod` in new or migrated projects.
-    #|- For real workspace tasks, use the `moon_check` tool for `moon check` feedback. Use `moon_cmd` for exact `moon test`, `moon run`, `moon info`, `moon fmt`, and README command validation; it runs `moon` directly and preserves the real exit code. Use the shell tool's `cwd` argument only for commands outside the supported MoonBit command set instead of embedding repeated `cd ... &&` command strings.
+    #|- For real workspace tasks, use the `moon_check` tool for `moon check` feedback. Use `moon_cmd` for exact `moon test`, `moon run`, `moon info`, `moon fmt`, and README command validation; it runs `moon` directly and preserves the real exit code. Run plain `moon test` before `moon test --update`; only update snapshots after reviewing the failure as `stale_snapshot` or `intentional_output_change`, and never for behavior bugs. Use the shell tool's `cwd` argument only for commands outside the supported MoonBit command set instead of embedding repeated `cd ... &&` command strings.
   )
 }
 

@@ -22,6 +22,12 @@ actual command line and process result.
 | `path` | string | no | One package/file path or main package. |
 | `paths` | string array | no | Additional package/file paths. |
 | `program_args` | string array | no | Arguments after `--`; only valid with `command = "run"`. |
+| `test_update_kind` | string | for `moon test --update` | `stale_snapshot` or `intentional_output_change`. |
+| `test_update_reason` | string | for `moon test --update` | Short explanation of the prior plain `moon test` failure review. |
+
+`moon test --update` is guarded deliberately. Run plain `moon test` first,
+review the failure, and only pass `--update` when it is a stale snapshot or an
+intentional output change. Do not use `--update` for behavior bugs.
 
 ## Action
 
@@ -44,6 +50,7 @@ test "moon_cmd tool advertises run validation fields" {
   let text = schema.stringify()
   assert_true(text.contains("\"command\""))
   assert_true(text.contains("\"program_args\""))
+  assert_true(text.contains("\"test_update_kind\""))
 }
 ```
 

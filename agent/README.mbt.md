@@ -100,3 +100,6 @@ improving:
   when the task only needs `moon check` feedback.
 - Use `moon_cmd` for exact end-to-end MoonBit command validation, especially
   `moon test`, `moon run`, `moon info`, `moon fmt`, and README command checks.
+- `moon_cmd` requires `test_update_kind` and `test_update_reason` for
+  `moon test --update`; run plain `moon test` first and only update snapshots
+  after deciding the failure is not a behavior bug.
