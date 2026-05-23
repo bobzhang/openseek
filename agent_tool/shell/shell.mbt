@@ -66,6 +66,11 @@ async fn execute(arguments : Json) -> @agent_tool.ToolAction {
         is_error=true,
       )
   }
+  match moonbit_command_policy_error(options.cmd) {
+    Some(message) =>
+      return @agent_tool.ToolAction::respond(message, is_error=true)
+    None => ()
+  }
   shell(options) catch {
     error =>
       @agent_tool.ToolAction::respond(
@@ -83,6 +88,96 @@ fn parse_options(fields : Map[String, Json]) -> ShellOptions raise {
     fields, "max_output_chars", default_max_output_chars,
   )
   { cmd, cwd, max_output_chars: cap_max_output_chars(max_output_chars) }
+}
+
+///|
+fn moonbit_command_policy_error(cmd : String) -> String? {
+  let words = shell_words(cmd)
+  let command_index = first_command_word_index(words)
+  match command_index {
+    None => None
+    Some(index) => {
+      let first = words[index]
+      if first == "moon_cmd" {
+        return Some(
+          "error: moon_cmd is a tool, not a shell command; call the moon_cmd tool directly",
+        )
+      }
+      if first == "moon" && index + 1 < words.length() {
+        let subcommand = words[index + 1]
+        if guarded_moon_subcommands().contains(subcommand) {
+          return Some(
+            "error: shell blocked `moon \{subcommand}`; use the moon_cmd tool so MoonBit commands keep structured args, output caps, and guardrails",
+          )
+        }
+      }
+      if contains_guarded_moon_fragment(cmd) {
+        Some(
+          "error: shell blocked an embedded MoonBit command; use cwd plus moon_cmd instead of `cd ... && moon ...`",
+        )
+      } else {
+        None
+      }
+    }
+  }
+}
+
+///|
+fn guarded_moon_subcommands() -> Array[String] {
+  ["check", "test", "run", "info", "fmt", "build"]
+}
+
+///|
+fn shell_words(cmd : String) -> Array[String] {
+  let words : Array[String] = []
+  for piece in cmd.split(" ") {
+    let word = clean_shell_word(piece.to_owned())
+    if word != "" {
+      words.push(word)
+    }
+  }
+  words
+}
+
+///|
+fn clean_shell_word(word : String) -> String {
+  word
+  .trim(chars="\t\r\n ")
+  .to_owned()
+  .trim(chars=";&|()")
+  .to_owned()
+}
+
+///|
+fn first_command_word_index(words : Array[String]) -> Int? {
+  for index, word in words {
+    if !looks_like_env_assignment(word) {
+      return Some(index)
+    }
+  }
+  None
+}
+
+///|
+fn looks_like_env_assignment(word : String) -> Bool {
+  if word.contains("/") || word.contains("-") {
+    return false
+  }
+  let parts = word.split("=").map(part => part.to_owned()).collect()
+  parts.length() == 2 && parts[0] != "" && parts[1] != ""
+}
+
+///|
+fn contains_guarded_moon_fragment(cmd : String) -> Bool {
+  let probes = ["&& moon ", "; moon ", "\nmoon "]
+  for probe in probes {
+    for subcommand in guarded_moon_subcommands() {
+      if cmd.contains(probe + subcommand) {
+        return true
+      }
+    }
+  }
+  false
 }
 
 ///|
@@ -244,6 +339,38 @@ async test "shell merges stderr into the captured output" {
   guard result is Respond(output) else { fail("expected Respond") }
   assert_false(output.is_error)
   assert_true(output.content.contains("oops"))
+}
+
+///|
+test "shell detects moon command policy errors" {
+  assert_true(moonbit_command_policy_error("moon test") is Some(_))
+  assert_true(
+    moonbit_command_policy_error("DEEPSEEK_MODEL=x moon run cmd/main") is Some(
+      _,
+    ),
+  )
+  assert_true(
+    moonbit_command_policy_error("cd demo && moon check") is Some(_),
+  )
+  assert_true(moonbit_command_policy_error("moon --version") is None)
+  assert_true(moonbit_command_policy_error("git status --short") is None)
+}
+
+///|
+async test "shell rejects moon run and points to moon_cmd" {
+  let result = execute({ "cmd": "moon run --target native cmd/main -- .a" })
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_true(output.is_error)
+  assert_true(output.content.contains("shell blocked `moon run`"))
+  assert_true(output.content.contains("moon_cmd"))
+}
+
+///|
+async test "shell rejects moon_cmd as a shell command" {
+  let result = execute({ "cmd": "moon_cmd run cmd/main" })
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_true(output.is_error)
+  assert_true(output.content.contains("moon_cmd is a tool"))
 }
 
 ///|
