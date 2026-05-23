@@ -60,3 +60,9 @@ the CLI to override it for one run.
 
 See each package README for API boundaries, examples, and package-specific test
 notes.
+
+For the evaluation-backed roadmap, see
+[`agent-improvement-guide.md`](agent-improvement-guide.md). It explains why the
+next highest-ROI work is semantic CLI validation, native CLI/error-handling
+guidance, MoonBit command routing, shaped IDE output, and manifest/debug/edit
+guardrails.
