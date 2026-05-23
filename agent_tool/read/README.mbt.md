@@ -5,6 +5,37 @@ whole file when it fits within the output cap. For larger files, or when the
 agent only needs a focused region, pass `start_line`, `max_lines`, or
 `max_output_chars`.
 
+## Design Rationale
+
+`read` preserves the simple whole-file behavior for small files because that is
+the most convenient path when the agent needs full context. The optional range
+and output-cap arguments exist for the failure mode seen in longer evaluations:
+large generated files and dependency sources can flood the transcript and push
+useful context out of the model window.
+
+Ranged or capped reads include a metadata header so the model knows what it saw
+and what it did not see. Automatic character truncation is marked as a tool
+error even when the file was read successfully; that makes lossy context visible
+to the loop instead of silently pretending the returned prefix is complete.
+
+## API Style
+
+Use `path` alone when the file is known to be small or the full file is needed:
+
+```json
+{ "path": "agent/prompt.mbt" }
+```
+
+Use `start_line` and `max_lines` for generated files, logs, or dependency
+source where the agent has already identified the relevant region:
+
+```json
+{ "path": "agent/prompt.mbt", "start_line": 40, "max_lines": 80 }
+```
+
+Use `max_output_chars` to protect the transcript when file size is uncertain.
+Prefer a range plus a cap over reading a large file and relying on truncation.
+
 ## Arguments
 
 | Name | Type | Required | Notes |

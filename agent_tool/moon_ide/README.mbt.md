@@ -9,6 +9,45 @@ The tool runs fresh IDE analysis by default. Set `no_check` to `true` when the
 workspace already has current IDE artifacts and speed matters more than a fresh
 check.
 
+## Design Rationale
+
+`moon_ide` gives the agent read-only semantic discovery before it edits. MoonBit
+packages are flat compilation units, so symbol ownership is not always obvious
+from file names alone. IDE queries let the agent inspect documentation,
+definitions, hovers, outlines, and references using the compiler's view of the
+project instead of guessing from text search.
+
+The tool is intentionally read-only. Renames and edits should remain separate
+operations so code mutation stays visible in `edit` or `write` calls. Fresh
+analysis is the default because stale IDE artifacts can mislead the agent;
+`no_check=true` is available only when the caller knows the workspace is already
+current.
+
+## API Style
+
+Use `doc` to discover APIs before writing code:
+
+```json
+{
+  "action": "doc",
+  "cwd": "/tmp/example_project",
+  "query": "String::replace_all"
+}
+```
+
+Use file-oriented actions with `path` or `loc` when navigating generated code:
+
+```json
+{
+  "action": "outline",
+  "cwd": "/tmp/example_project",
+  "path": "src/parser.mbt"
+}
+```
+
+Prefer `moon_ide` before broad source reads when a semantic query can answer the
+question directly.
+
 ## Arguments
 
 | Name | Type | Required | Notes |

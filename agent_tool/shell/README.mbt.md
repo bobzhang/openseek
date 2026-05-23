@@ -5,6 +5,37 @@ with the merged stdout/stderr output. It is the agent's escape hatch for
 running build commands, tests, package managers, version-control operations,
 and any other workspace task the other built-in tools don't cover.
 
+## Design Rationale
+
+`shell` is the general escape hatch because an agent occasionally needs a real
+workspace command that is not worth modeling as a dedicated tool. It uses
+`sh -c` to match developer command-line ergonomics: pipelines, redirects,
+environment variables, and existing scripts all work without inventing a custom
+argument schema for every possible operation.
+
+stdout and stderr are merged so diagnostics appear in the same order a terminal
+would show them. Output is capped because commands can accidentally emit
+generated artifacts, dependency listings, or compiler invocations large enough
+to damage the model context. Truncation is treated as a tool error so the agent
+knows it did not receive the full command output.
+
+## API Style
+
+Use `cwd` whenever the command is workspace-relative, and keep commands
+specific:
+
+```json
+{
+  "cmd": "git status --short",
+  "cwd": "/Users/dii/git/openseek"
+}
+```
+
+Prefer dedicated tools when they encode useful policy. For MoonBit compiler
+diagnostics, use `moon_check`; for MoonBit test/run/info/fmt/build validation,
+use `moon_cmd`. Use `shell` for everything else or for commands that need shell
+features such as pipes.
+
 ## Arguments
 
 | Name | Type   | Required | Notes |

@@ -5,6 +5,30 @@ result surfaced to the user. It is the only built-in tool whose result is a
 `Control(Finish(...))` action — every other built-in tool produces
 `Respond(ToolOutput(...))` and lets the loop keep running.
 
+## Design Rationale
+
+`finish` is modeled as a control action instead of a normal tool response so
+the host can stop the loop deterministically. A final answer should not be fed
+back to the model as another observation; it is the terminal state of the
+agent run.
+
+Malformed `finish` arguments still end the loop with an empty answer. This is
+deliberately lenient: once the model has selected `finish`, continuing the loop
+usually creates more confusion than surfacing a blank final result.
+
+## API Style
+
+Use `finish` only when no more tool work is required and the answer is ready to
+return to the user:
+
+```json
+{
+  "answer": "Updated the tool docs and ran the README tests."
+}
+```
+
+All non-terminal work should use a normal response-producing tool instead.
+
 ## Arguments
 
 | Name     | Type   | Required | Notes |

@@ -5,6 +5,35 @@ code with merged stdout/stderr output. It is a focused validation tool for
 MoonBit work: use it when the agent needs compiler feedback without going
 through `sh -c`.
 
+## Design Rationale
+
+`moon_check` exists separately from `shell` and `moon_cmd` because compiler
+diagnostics are the tightest feedback loop in MoonBit work. It always runs
+`moon check --output-json`, which gives the agent structured locations and
+messages without depending on a shell pipeline or a human-readable formatter.
+
+The schema is intentionally narrow. It accepts MoonBit check options that affect
+diagnostics, but it does not expose unrelated `moon` subcommands. That narrow
+shape nudges the agent to check early and often while keeping compile feedback
+separate from tests, CLI runs, formatting, and interface generation.
+
+## API Style
+
+Use `moon_check` after each meaningful code batch, especially after creating or
+editing a package file:
+
+```json
+{
+  "cwd": "/tmp/example_project",
+  "path": "src/parser",
+  "target": "native"
+}
+```
+
+Use `warn_list` or `deny_warn` when the task requires stricter cleanup. Use
+`moon_cmd` for `moon test`, `moon run`, `moon info`, `moon fmt`, or
+user-facing command validation.
+
 ## Arguments
 
 | Name | Type | Required | Notes |

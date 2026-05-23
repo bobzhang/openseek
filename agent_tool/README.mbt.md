@@ -32,6 +32,41 @@ Tool output errors are typed with `is_error=true`, but the output content is
 still sent to the model so it can recover. Control actions are not sent back as
 tool messages; the host loop handles them directly.
 
+## Design Rationale
+
+The tool layer is intentionally small and typed because the model-facing tool
+protocol and the host agent loop have different concerns. DeepSeek tool calls
+arrive as raw JSON argument strings with provider-specific ids, while local
+executors need parsed arguments, local validation, and explicit control over
+whether the loop should continue.
+
+`ToolAction` separates normal tool responses from loop control. Most tools
+return `Respond(ToolOutput(...))`, including failures, so the model can inspect
+the error and recover in the next step. `finish` returns `Control(Finish(...))`
+so ending the run is a host-loop decision rather than another message the model
+has to interpret.
+
+Each concrete tool is a subpackage to keep the root package focused on the
+shared contract: parsing calls, advertising JSON schemas, dispatching tools,
+and representing typed output. This also makes it cheap to test or replace one
+tool without changing the registry or the agent loop.
+
+## API Style
+
+Tool APIs use object-shaped JSON arguments with explicit field names. Required
+fields are validated inside each tool, and invalid arguments are returned as
+`ToolOutput(..., is_error=true)` instead of raising through the agent loop.
+
+Tool responses are plain text by design. The agent log and model transcript
+should show the same diagnostic text a developer would use while debugging:
+command line, exit status, compiler output, file metadata, or a concise write
+confirmation. When a tool needs structured behavior, the structure is in the
+schema and the output header, not in hidden host state.
+
+Control actions are reserved for loop state transitions. Normal tools should
+not stop the agent; they should report enough information for the next model
+step to decide what to do.
+
 ```moonbit check
 ///|
 test "tool action helpers" {

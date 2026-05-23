@@ -30,6 +30,47 @@ actual command line and process result.
 review the failure, and only pass `--update` when it is a stale snapshot or an
 intentional output change. Do not use `--update` for behavior bugs.
 
+## Design Rationale
+
+`moon_cmd` covers the MoonBit commands whose success criteria are more than
+compiler diagnostics: tests, CLI behavior, package interface generation,
+formatting, and builds. Running these commands directly avoids shell status
+masking and keeps the command line visible in a stable output header.
+
+The tool accepts only selected `moon` subcommands because that lets the host add
+policy around high-risk actions. The `moon test --update` guardrail is an
+example: snapshot refreshes are allowed only after the agent states whether the
+change is a stale snapshot or an intentional output change. Output caps mirror
+the shell tool because `moon run --target native` can produce very large
+compiler or generated-artifact output when a CLI is miswired.
+
+## API Style
+
+Use `command`, optional `target`, optional `path` or `paths`, and `program_args`
+for the command after `--`:
+
+```json
+{
+  "command": "run",
+  "cwd": "/tmp/example_project",
+  "target": "native",
+  "path": "cmd/main",
+  "program_args": ["fixtures/schema.json", "fixtures/valid.json"]
+}
+```
+
+For snapshot updates, first run plain `moon test`, inspect the failure, then
+include both guard fields:
+
+```json
+{
+  "command": "test",
+  "args": ["--update"],
+  "test_update_kind": "intentional_output_change",
+  "test_update_reason": "Parser error messages now include source paths."
+}
+```
+
 ## Action
 
 The action is always `Respond(ToolOutput(...))`. `is_error` is true when the

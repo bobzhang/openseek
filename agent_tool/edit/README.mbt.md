@@ -3,6 +3,42 @@
 `edit` replaces exact text in `arguments.path`. It is intended for targeted
 code changes where overwriting the whole file would be unnecessarily broad.
 
+## Design Rationale
+
+`edit` uses exact `old_string` replacement instead of a patch language because
+the host can validate the change with simple, deterministic rules. The default
+single-match requirement prevents ambiguous edits in files that contain repeated
+snippets. `replace_all=true` is explicit so broad changes show up in the tool
+call rather than being an accidental consequence of a loose match.
+
+Rejecting empty `old_string` and identical replacements protects against
+no-op or explosive edits. The tool is designed for small surgical changes; if a
+file needs a complete rewrite, `write` is the clearer API.
+
+## API Style
+
+Use a context-rich exact string that should occur once:
+
+```json
+{
+  "path": "agent/prompt.mbt",
+  "old_string": "Use moon check before moon test.",
+  "new_string": "Use moon check before moon test, and inspect failures before editing."
+}
+```
+
+Set `replace_all=true` only after deciding every occurrence is intentionally
+part of the same change:
+
+```json
+{
+  "path": "agent/prompt.mbt",
+  "old_string": "moon.mod.json",
+  "new_string": "moon.mod",
+  "replace_all": true
+}
+```
+
 ## Arguments
 
 | Name          | Type    | Required | Notes |
