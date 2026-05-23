@@ -98,10 +98,18 @@ improving:
   tool now accepts optional `cwd` to avoid repeated ad hoc `cd` command strings.
 - The default step limit is 1000, and the CLI can override it with
   `--max-steps` or `OPENSEEK_MAX_STEPS`.
+- Current MoonBit projects use `moon.mod`; `moon.mod.json` is legacy. New
+  projects should create `moon.mod`, and manifest or package-import edits
+  should be followed immediately by `moon_check` or `moon_cmd check`.
 - MoonBit validation should prefer the `moon_check` tool over shell pipelines
   when the task only needs `moon check` feedback.
 - Use `moon_cmd` for exact end-to-end MoonBit command validation, especially
   `moon test`, `moon run`, `moon info`, `moon fmt`, and README command checks.
+- Before finishing user-facing CLI work, derive two or three acceptance probes
+  from the task and run them with `moon_cmd run`. These probes should exercise
+  real file arguments, stdin when promised, stdout shape, stderr cleanliness,
+  and failure-mode output. This prompt guardrail is intentionally lightweight;
+  future cram-style tests can encode the same probes as durable fixtures.
 - `moon_cmd` requires `test_update_kind` and `test_update_reason` for
   `moon test --update`; run plain `moon test` first and only update snapshots
   after deciding the failure is not a behavior bug.

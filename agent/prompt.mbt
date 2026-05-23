@@ -1315,12 +1315,13 @@ fn openseek_deepseek_addendum() -> String {
     #|- In blackbox tests, prefer `debug_inspect` for values that derive `Debug`; plain `inspect` requires `Show` and often triggers deprecated Show-based output.
     #|- When an enum type is already known from context, use unqualified constructors such as `Table(value)` instead of over-qualified `@pkg.Value::Table(value)`.
     #|- Avoid direct map indexing such as `table[key]` unless the key is guaranteed to exist; it can abort at runtime. Use `table.get(key)` when creating nested tables.
-    #|- Current MoonBit uses `moon.mod`; `moon.mod.json` is legacy. Treat copied guide references to `moon.mod.json` as legacy and prefer `moon.mod` in new or migrated projects.
+    #|- Current MoonBit uses `moon.mod`; `moon.mod.json` is legacy. For new projects, create `moon.mod`, not `moon.mod.json`. Only preserve `moon.mod.json` when an existing project is deliberately still in legacy mode. After editing `moon.mod`, `moon.pkg`, or package imports, immediately run `moon_check` or `moon_cmd check` before continuing.
     #|- For real workspace tasks, use `moon_ide doc` before relying on unfamiliar MoonBit APIs. Use `moon_ide outline`, `moon_ide peek_def`, and `moon_ide find_references` before editing existing MoonBit packages instead of guessing from text search alone.
     #|- The `read` tool supports `start_line`, `max_lines`, and `max_output_chars`. Use focused ranges for large generated files, dependency source, logs, or files you only need to inspect partially instead of reading the whole file.
     #|- MoonBit packages are flat like Go packages: all `.mbt` files beside one `moon.pkg` share a single namespace, and file names do not create modules, import paths, or qualified names. Split code into small cohesive files for reviewability, but never refer to a file as a module.
     #|- Avoid one large generated file or one huge write. Add focused files or blocks, run `moon_check` or `moon_cmd check` after each package-level step, and only continue once the current package checks.
     #|- For real workspace tasks, use the `moon_check` tool for `moon check` feedback. Use `moon_cmd` for exact `moon test`, `moon run`, `moon info`, `moon fmt`, and README command validation; it runs `moon` directly and preserves the real exit code. Run plain `moon test` before `moon test --update`; only update snapshots after reviewing the failure as `stale_snapshot` or `intentional_output_change`, and never for behavior bugs. `moon_cmd` and `shell` truncate large output and report truncation as a tool error; if a CLI smoke test is truncated or emits generated native/C output, fix the CLI or command rather than increasing the output cap. Use the shell tool's `cwd` argument only for commands outside the supported MoonBit command set instead of embedding repeated `cd ... &&` command strings.
+    #|- Before `finish`, derive two or three acceptance probes from the user's task and any fixtures or README examples you created. For user-facing CLIs, run those probes with `moon_cmd run` and verify the real contract: file arguments are read as files, stdin mode works when promised, stdout has the requested JSON/JSON Lines/text shape, stderr is clean unless the task expects an error, and failure cases do not leak runtime debug output such as `Failure(...)`. If exact output ordering is not part of the contract, still check stable semantic properties such as valid JSON, a known field value, or the number of JSON Lines.
   )
 }
 
@@ -1335,5 +1336,9 @@ test "system prompt includes moonbit guide" {
   assert_true(prompt.contains("start_line"))
   assert_true(prompt.contains("flat like Go packages"))
   assert_true(prompt.contains("generated native/C entry path"))
+  assert_true(prompt.contains("create `moon.mod`, not `moon.mod.json`"))
+  assert_true(prompt.contains("After editing `moon.mod`, `moon.pkg`"))
+  assert_true(prompt.contains("acceptance probes"))
+  assert_true(prompt.contains("file arguments are read as files"))
   assert_true(prompt.contains("OpenSeek DeepSeek Addendum"))
 }
