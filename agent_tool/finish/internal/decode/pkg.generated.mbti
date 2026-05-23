@@ -1,0 +1,17 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/agent_tool/finish/internal/decode"
+
+// Values
+pub fn decode(Json) -> FinishInput
+
+// Errors
+
+// Types and methods
+pub struct FinishInput {
+  answer : String
+}
+
+// Type aliases
+
+// Traits
+

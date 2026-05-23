@@ -28,7 +28,7 @@ pub struct AgentToolDefinition {
   schema : JsonSchema
   execute : ToolExecutor
 }
-pub fn AgentToolDefinition::AgentToolDefinition(String, String, JsonSchema, ToolExecutor) -> Self
+pub fn AgentToolDefinition::AgentToolDefinition(name~ : String, description~ : String, schema~ : JsonSchema, execute~ : ToolExecutor) -> Self
 
 pub(all) struct JsonSchema(Json)
 

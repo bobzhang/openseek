@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/agent_tool/read/internal/decode"
+
+// Values
+pub fn decode(Json) -> ReadInput raise
+
+pub let default_max_output_chars : Int
+
+pub let hard_max_output_chars : Int
+
+// Errors
+
+// Types and methods
+pub struct ReadInput {
+  path : String
+  start_line : Int
+  max_lines : Int?
+  max_output_chars : Int
+}
+
+// Type aliases
+
+// Traits
+

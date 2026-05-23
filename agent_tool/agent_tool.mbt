@@ -36,7 +36,7 @@ pub(all) struct JsonSchema(Json)
 ///|
 /// A locally registered tool: the name and JSON Schema sent to DeepSeek, plus a
 /// callable executor that runs when DeepSeek requests this tool. Construct via
-/// `AgentToolDefinition(name, description, schema, execute)`.
+/// `AgentToolDefinition(name~, description~, schema~, execute~)`.
 pub struct AgentToolDefinition {
   name : String
   description : String
@@ -48,10 +48,10 @@ pub struct AgentToolDefinition {
 /// Builds a tool definition with a name, JSON Schema for the arguments, and
 /// the executor the framework invokes when DeepSeek requests this tool.
 pub fn AgentToolDefinition::AgentToolDefinition(
-  name : String,
-  description : String,
-  schema : JsonSchema,
-  execute : ToolExecutor,
+  name~ : String,
+  description~ : String,
+  schema~ : JsonSchema,
+  execute~ : ToolExecutor,
 ) -> AgentToolDefinition {
   { name, description, schema, execute }
 }

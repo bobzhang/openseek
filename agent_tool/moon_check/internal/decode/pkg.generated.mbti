@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/agent_tool/moon_check/internal/decode"
+
+// Values
+pub fn decode(Json) -> MoonCheckInput raise
+
+// Errors
+
+// Types and methods
+pub struct MoonCheckInput {
+  cwd : String?
+  paths : Array[String]
+  target : String?
+  warn_list : String?
+  deny_warn : Bool
+  fmt : Bool
+  explain : Bool
+}
+
+// Type aliases
+
+// Traits
+

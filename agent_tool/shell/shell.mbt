@@ -21,9 +21,9 @@
 ///   invalid arguments.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
-    "shell",
-    "Run arguments.cmd through sh -c, optionally in arguments.cwd, and return exit code plus output.",
-    JsonSchema({
+    name="shell",
+    description="Run arguments.cmd through sh -c, optionally in arguments.cwd, and return exit code plus output.",
+    schema=JsonSchema({
       "type": "object",
       "properties": {
         "cmd": { "type": "string" },
@@ -32,62 +32,33 @@ pub fn definition() -> @agent_tool.AgentToolDefinition {
       },
       "required": ["cmd"],
     }),
-    Async(execute),
+    execute=Async(execute),
   )
 }
 
 ///|
-let default_max_output_chars : Int = 12000
-
-///|
-let hard_max_output_chars : Int = 50000
-
-///|
-priv struct ShellOptions {
-  cmd : String
-  cwd : String?
-  max_output_chars : Int
-}
-
-///|
 async fn execute(arguments : Json) -> @agent_tool.ToolAction {
-  let options = match arguments {
-    Object(fields) =>
-      parse_options(fields) catch {
-        error =>
-          return @agent_tool.ToolAction::respond(
-            "error: shell requires \{error}",
-            is_error=true,
-          )
-      }
-    _ =>
+  let input = @decode.decode(arguments) catch {
+    error => {
+      let message = @tool_error.failure_message("\{error}")
       return @agent_tool.ToolAction::respond(
-        "error: shell requires object arguments",
+        "error: shell requires \{message}",
         is_error=true,
       )
+    }
   }
-  match moonbit_command_policy_error(options.cmd) {
+  match moonbit_command_policy_error(input.cmd) {
     Some(message) =>
       return @agent_tool.ToolAction::respond(message, is_error=true)
     None => ()
   }
-  shell(options) catch {
+  shell(input) catch {
     error =>
       @agent_tool.ToolAction::respond(
         "error running shell: \{error}",
         is_error=true,
       )
   }
-}
-
-///|
-fn parse_options(fields : Map[String, Json]) -> ShellOptions raise {
-  let cmd = required_string(fields, "cmd")
-  let cwd = optional_string(fields, "cwd")
-  let max_output_chars = optional_positive_int(
-    fields, "max_output_chars", default_max_output_chars,
-  )
-  { cmd, cwd, max_output_chars: cap_max_output_chars(max_output_chars) }
 }
 
 ///|
@@ -177,63 +148,17 @@ fn contains_guarded_moon_fragment(cmd : String) -> Bool {
 }
 
 ///|
-fn required_string(fields : Map[String, Json], name : String) -> String raise {
-  match fields.get(name) {
-    Some(String(value)) if value != "" => value
-    Some(String(_)) | Some(Null) | None => fail("arguments.\{name}")
-    _ => fail("arguments.\{name} to be a string")
-  }
-}
-
-///|
-fn optional_string(fields : Map[String, Json], name : String) -> String? raise {
-  match fields.get(name) {
-    Some(String(value)) if value != "" => Some(value)
-    Some(String(_)) | Some(Null) | None => None
-    _ => fail("arguments.\{name} to be a string")
-  }
-}
-
-///|
-fn optional_positive_int(
-  fields : Map[String, Json],
-  name : String,
-  default : Int,
-) -> Int raise {
-  match fields.get(name) {
-    Some(Number(value, ..)) => {
-      let int_value = value.to_int()
-      if int_value <= 0 {
-        fail("arguments.\{name} to be a positive number")
-      }
-      int_value
-    }
-    Some(Null) | None => default
-    _ => fail("arguments.\{name} to be a number")
-  }
-}
-
-///|
-fn cap_max_output_chars(value : Int) -> Int {
-  if value > hard_max_output_chars {
-    hard_max_output_chars
-  } else {
-    value
-  }
-}
-
-///|
-async fn shell(options : ShellOptions) -> @agent_tool.ToolAction {
-  let (code, output) = match options.cwd {
-    Some(cwd) => @process.collect_output_merged("sh", ["-c", options.cmd], cwd~)
-    None => @process.collect_output_merged("sh", ["-c", options.cmd])
+async fn shell(input : @decode.ShellInput) -> @agent_tool.ToolAction {
+  let (code, output) = match input.cwd {
+    Some(cwd) => @process.collect_output_merged("sh", ["-c", input.cmd], cwd~)
+    None => @process.collect_output_merged("sh", ["-c", input.cmd])
   }
   let body = output.text()
-  let capped = cap_text(body, options.max_output_chars)
-  let truncation = truncation_header(body, options.max_output_chars)
+  let capped = cap_text(body, input.max_output_chars)
+  let truncation = truncation_header(body, input.max_output_chars)
   @agent_tool.ToolAction::respond(
     "exit=\{code}\{truncation}\n\{capped}",
-    is_error=code != 0 || is_truncated(body, options.max_output_chars),
+    is_error=code != 0 || is_truncated(body, input.max_output_chars),
   )
 }
 
@@ -262,14 +187,14 @@ fn truncation_header(content : String, max_chars : Int) -> String {
 
 ///|
 test "shell parses and caps output limit" {
-  let options = parse_options({
+  let input = @decode.decode({
     "cmd": "echo hello",
     "cwd": "/tmp",
     "max_output_chars": 999999,
   })
-  assert_eq(options.cmd, "echo hello")
-  assert_true(options.cwd is Some("/tmp"))
-  assert_eq(options.max_output_chars, hard_max_output_chars)
+  assert_eq(input.cmd, "echo hello")
+  assert_true(input.cwd is Some("/tmp"))
+  assert_eq(input.max_output_chars, @decode.hard_max_output_chars)
 }
 
 ///|

@@ -1,0 +1,20 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/agent_tool/edit/internal/decode"
+
+// Values
+pub fn decode(Json) -> EditInput raise
+
+// Errors
+
+// Types and methods
+pub struct EditInput {
+  path : String
+  old_string : String
+  new_string : String
+  replace_all : Bool
+}
+
+// Type aliases
+
+// Traits
+

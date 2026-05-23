@@ -24,9 +24,9 @@
 ///   for invalid arguments.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
-    "moon_check",
-    "Run moon check --output-json directly, optionally in arguments.cwd, and return exit code plus output.",
-    JsonSchema({
+    name="moon_check",
+    description="Run moon check --output-json directly, optionally in arguments.cwd, and return exit code plus output.",
+    schema=JsonSchema({
       "type": "object",
       "properties": {
         "cwd": { "type": "string" },
@@ -42,39 +42,22 @@ pub fn definition() -> @agent_tool.AgentToolDefinition {
         "explain": { "type": "boolean" },
       },
     }),
-    Async(execute),
+    execute=Async(execute),
   )
 }
 
 ///|
-priv struct MoonCheckOptions {
-  cwd : String?
-  paths : Array[String]
-  target : String?
-  warn_list : String?
-  deny_warn : Bool
-  fmt : Bool
-  explain : Bool
-}
-
-///|
 async fn execute(arguments : Json) -> @agent_tool.ToolAction {
-  let options = match arguments {
-    Object(fields) =>
-      parse_options(fields) catch {
-        error =>
-          return @agent_tool.ToolAction::respond(
-            "error: moon_check requires \{error}",
-            is_error=true,
-          )
-      }
-    _ =>
+  let input = @decode.decode(arguments) catch {
+    error => {
+      let message = @tool_error.failure_message("\{error}")
       return @agent_tool.ToolAction::respond(
-        "error: moon_check requires object arguments",
+        "error: moon_check requires \{message}",
         is_error=true,
       )
+    }
   }
-  moon_check(options) catch {
+  moon_check(input) catch {
     error =>
       @agent_tool.ToolAction::respond(
         "error running moon_check: \{error}",
@@ -84,115 +67,45 @@ async fn execute(arguments : Json) -> @agent_tool.ToolAction {
 }
 
 ///|
-fn parse_options(fields : Map[String, Json]) -> MoonCheckOptions raise {
-  let cwd = optional_string(fields, "cwd")
-  let target = optional_string(fields, "target")
-  match target {
-    Some(value) => validate_target(value)
-    None => ()
-  }
-  let warn_list = optional_string(fields, "warn_list")
-  let paths = parse_paths(fields)
-  {
-    cwd,
-    paths,
-    target,
-    warn_list,
-    deny_warn: optional_bool(fields, "deny_warn"),
-    fmt: optional_bool(fields, "fmt"),
-    explain: optional_bool(fields, "explain"),
-  }
-}
-
-///|
-fn optional_string(fields : Map[String, Json], name : String) -> String? raise {
-  match fields.get(name) {
-    Some(String(value)) if value != "" => Some(value)
-    Some(String(_)) | Some(Null) | None => None
-    _ => fail("arguments.\{name} to be a string")
-  }
-}
-
-///|
-fn optional_bool(fields : Map[String, Json], name : String) -> Bool raise {
-  match fields.get(name) {
-    Some(True) => true
-    Some(False) | Some(Null) | None => false
-    _ => fail("arguments.\{name} to be a boolean")
-  }
-}
-
-///|
-fn parse_paths(fields : Map[String, Json]) -> Array[String] raise {
-  let paths : Array[String] = []
-  match fields.get("path") {
-    Some(String(path)) if path != "" => paths.push(path)
-    Some(String(_)) | Some(Null) | None => ()
-    _ => fail("arguments.path to be a string")
-  }
-  match fields.get("paths") {
-    Some(Array(values)) =>
-      for value in values {
-        match value {
-          String(path) if path != "" => paths.push(path)
-          String(_) | Null => ()
-          _ => fail("arguments.paths to be an array of strings")
-        }
-      }
-    Some(Null) | None => ()
-    _ => fail("arguments.paths to be an array of strings")
-  }
-  paths
-}
-
-///|
-fn validate_target(target : String) -> Unit raise {
-  let allowed = ["wasm", "wasm-gc", "js", "native", "llvm", "all"]
-  if !allowed.contains(target) {
-    fail("arguments.target to be one of wasm, wasm-gc, js, native, llvm, all")
-  }
-}
-
-///|
-fn MoonCheckOptions::command_args(self : MoonCheckOptions) -> Array[String] {
+fn command_args(input : @decode.MoonCheckInput) -> Array[String] {
   let args : Array[String] = ["check", "--output-json"]
-  match self.target {
+  match input.target {
     Some(target) => {
       args.push("--target")
       args.push(target)
     }
     None => ()
   }
-  match self.warn_list {
+  match input.warn_list {
     Some(warn_list) => {
       args.push("--warn-list")
       args.push(warn_list)
     }
     None => ()
   }
-  if self.deny_warn {
+  if input.deny_warn {
     args.push("--deny-warn")
   }
-  if self.fmt {
+  if input.fmt {
     args.push("--fmt")
   }
-  if self.explain {
+  if input.explain {
     args.push("--explain")
   }
-  for path in self.paths {
+  for path in input.paths {
     args.push(path)
   }
   args
 }
 
 ///|
-async fn moon_check(options : MoonCheckOptions) -> @agent_tool.ToolAction {
-  let args = options.command_args()
-  let (code, output) = match options.cwd {
+async fn moon_check(input : @decode.MoonCheckInput) -> @agent_tool.ToolAction {
+  let args = command_args(input)
+  let (code, output) = match input.cwd {
     Some(cwd) => @process.collect_output_merged("moon", args, cwd~)
     None => @process.collect_output_merged("moon", args)
   }
-  let cwd_text = match options.cwd {
+  let cwd_text = match input.cwd {
     Some(cwd) => cwd
     None => "."
   }
@@ -215,33 +128,33 @@ test "moon_check advertises expected schema" {
 
 ///|
 test "moon_check builds direct moon command arguments" {
-  let options : MoonCheckOptions = {
-    cwd: Some("/tmp"),
-    paths: ["agent", "README.mbt.md"],
-    target: Some("native"),
-    warn_list: Some("+unnecessary_annotation"),
-    deny_warn: true,
-    fmt: true,
-    explain: true,
-  }
+  let input = @decode.decode({
+    "cwd": "/tmp",
+    "paths": ["agent", "README.mbt.md"],
+    "target": "native",
+    "warn_list": "+unnecessary_annotation",
+    "deny_warn": true,
+    "fmt": true,
+    "explain": true,
+  })
   assert_eq(
-    options.command_args().join("|"),
+    command_args(input).join("|"),
     "check|--output-json|--target|native|--warn-list|+unnecessary_annotation|--deny-warn|--fmt|--explain|agent|README.mbt.md",
   )
 }
 
 ///|
 test "moon_check parses path and paths together" {
-  let options = parse_options({
+  let input = @decode.decode({
     "path": "agent",
     "paths": ["agent_tool/read", "agent_tool/write"],
   })
-  assert_eq(options.paths.join("|"), "agent|agent_tool/read|agent_tool/write")
+  assert_eq(input.paths.join("|"), "agent|agent_tool/read|agent_tool/write")
 }
 
 ///|
 test "moon_check rejects invalid target" {
-  let _ = parse_options({ "target": "browser" }) catch {
+  let _ = @decode.decode({ "target": "browser" }) catch {
     error => {
       assert_true("\{error}".contains("arguments.target"))
       return

@@ -16,9 +16,9 @@
 ///   invalid arguments.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
-    "write",
-    "Overwrite arguments.path with arguments.content.",
-    JsonSchema({
+    name="write",
+    description="Overwrite arguments.path with arguments.content.",
+    schema=JsonSchema({
       "type": "object",
       "properties": {
         "path": { "type": "string" },
@@ -26,47 +26,43 @@ pub fn definition() -> @agent_tool.AgentToolDefinition {
       },
       "required": ["path", "content"],
     }),
-    Async(execute),
+    execute=Async(execute),
   )
 }
 
 ///|
 async fn execute(arguments : Json) -> @agent_tool.ToolAction {
-  let (path, content) = match arguments {
-    { "path": String(path), "content": String(content), .. } => (path, content)
-    { "path": String(_), .. } =>
+  let input = @decode.decode(arguments) catch {
+    error => {
+      let message = @tool_error.failure_message("\{error}")
       return @agent_tool.ToolAction::respond(
-        "error: write requires arguments.content",
+        "error: write requires \{message}",
         is_error=true,
       )
-    Object(_) =>
-      return @agent_tool.ToolAction::respond(
-        "error: write requires arguments.path",
-        is_error=true,
-      )
-    _ =>
-      return @agent_tool.ToolAction::respond(
-        "error: write requires object arguments",
-        is_error=true,
-      )
+    }
   }
+  write_file(input)
+}
+
+///|
+async fn write_file(input : @decode.WriteInput) -> @agent_tool.ToolAction {
   try {
-    match manifest_write_error(path, content) {
+    match manifest_write_error(input.path, input.content) {
       Some(message) =>
         return @agent_tool.ToolAction::respond(
-          "error writing \{path}: \{message}",
+          "error writing \{input.path}: \{message}",
           is_error=true,
         )
       None => ()
     }
-    @fs.write_file(path, content, create_mode=CreateOrTruncate)
+    @fs.write_file(input.path, input.content, create_mode=CreateOrTruncate)
     @agent_tool.ToolAction::respond(
-      "ok: wrote \{content.length()} chars to \{path}",
+      "ok: wrote \{input.content.length()} chars to \{input.path}",
     )
   } catch {
     error =>
       @agent_tool.ToolAction::respond(
-        "error writing \{path}: \{error}",
+        "error writing \{input.path}: \{error}",
         is_error=true,
       )
   }

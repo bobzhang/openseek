@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/agent_tool/shell/internal/decode"
+
+// Values
+pub fn decode(Json) -> ShellInput raise
+
+pub let default_max_output_chars : Int
+
+pub let hard_max_output_chars : Int
+
+// Errors
+
+// Types and methods
+pub struct ShellInput {
+  cmd : String
+  cwd : String?
+  max_output_chars : Int
+}
+
+// Type aliases
+
+// Traits
+

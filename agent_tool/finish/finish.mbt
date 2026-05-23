@@ -13,24 +13,25 @@
 /// always stops after `finish` runs, regardless of what comes back.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
-    "finish",
-    "End the task with arguments.answer.",
-    JsonSchema({
+    name="finish",
+    description="End the task with arguments.answer.",
+    schema=JsonSchema({
       "type": "object",
       "properties": { "answer": { "type": "string" } },
       "required": ["answer"],
     }),
-    Sync(execute),
+    execute=Sync(execute),
   )
 }
 
 ///|
 fn execute(arguments : Json) -> @agent_tool.ToolAction {
-  let answer = match arguments {
-    { "answer": String(answer), .. } => answer
-    _ => ""
-  }
-  @agent_tool.ToolAction::finish(answer)
+  finish(@decode.decode(arguments))
+}
+
+///|
+fn finish(input : @decode.FinishInput) -> @agent_tool.ToolAction {
+  @agent_tool.ToolAction::finish(input.answer)
 }
 
 ///|

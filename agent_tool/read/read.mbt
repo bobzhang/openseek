@@ -21,9 +21,9 @@
 ///   invalid arguments.
 pub fn definition() -> @agent_tool.AgentToolDefinition {
   AgentToolDefinition(
-    "read",
-    "Read arguments.path as text. Supports optional start_line, max_lines, and max_output_chars for focused reads.",
-    JsonSchema({
+    name="read",
+    description="Read arguments.path as text. Supports optional start_line, max_lines, and max_output_chars for focused reads.",
+    schema=JsonSchema({
       "type": "object",
       "properties": {
         "path": { "type": "string" },
@@ -33,43 +33,22 @@ pub fn definition() -> @agent_tool.AgentToolDefinition {
       },
       "required": ["path"],
     }),
-    Async(execute),
+    execute=Async(execute),
   )
 }
 
 ///|
 async fn execute(arguments : Json) -> @agent_tool.ToolAction {
-  match arguments {
-    Object(fields) => {
-      let options = parse_options(fields) catch {
-        error =>
-          return @agent_tool.ToolAction::respond(
-            "error: read requires \{error}",
-            is_error=true,
-          )
-      }
-      read_file(options)
-    }
-    _ =>
-      @agent_tool.ToolAction::respond(
-        "error: read requires object arguments",
+  let input = @decode.decode(arguments) catch {
+    error => {
+      let message = @tool_error.failure_message("\{error}")
+      return @agent_tool.ToolAction::respond(
+        "error: read requires \{message}",
         is_error=true,
       )
+    }
   }
-}
-
-///|
-let default_max_output_chars : Int = 12000
-
-///|
-let hard_max_output_chars : Int = 50000
-
-///|
-priv struct ReadOptions {
-  path : String
-  start_line : Int
-  max_lines : Int?
-  max_output_chars : Int
+  read_file(input)
 }
 
 ///|
@@ -83,94 +62,22 @@ priv struct ReadSelection {
 }
 
 ///|
-fn parse_options(fields : Map[String, Json]) -> ReadOptions raise {
-  let path = required_string(fields, "path")
-  let start_line = optional_positive_int(fields, "start_line", 1)
-  let max_lines = optional_positive_int_option(fields, "max_lines")
-  let max_output_chars = optional_positive_int(
-    fields, "max_output_chars", default_max_output_chars,
-  )
-  {
-    path,
-    start_line,
-    max_lines,
-    max_output_chars: cap_max_output_chars(max_output_chars),
-  }
-}
-
-///|
-fn required_string(fields : Map[String, Json], name : String) -> String raise {
-  match fields.get(name) {
-    Some(String(value)) if value != "" => value
-    Some(String(_)) | Some(Null) | None => fail("arguments.\{name}")
-    _ => fail("arguments.\{name} to be a string")
-  }
-}
-
-///|
-fn optional_positive_int(
-  fields : Map[String, Json],
-  name : String,
-  default : Int,
-) -> Int raise {
-  match fields.get(name) {
-    Some(Number(value, ..)) => {
-      let int_value = value.to_int()
-      if int_value <= 0 {
-        fail("arguments.\{name} to be a positive number")
-      }
-      int_value
-    }
-    Some(Null) | None => default
-    _ => fail("arguments.\{name} to be a number")
-  }
-}
-
-///|
-fn optional_positive_int_option(
-  fields : Map[String, Json],
-  name : String,
-) -> Int? raise {
-  match fields.get(name) {
-    Some(Number(value, ..)) => {
-      let int_value = value.to_int()
-      if int_value <= 0 {
-        fail("arguments.\{name} to be a positive number")
-      }
-      Some(int_value)
-    }
-    Some(Null) | None => None
-    _ => fail("arguments.\{name} to be a number")
-  }
-}
-
-///|
-fn cap_max_output_chars(value : Int) -> Int {
-  if value > hard_max_output_chars {
-    hard_max_output_chars
-  } else {
-    value
-  }
-}
-
-///|
-async fn read_file(options : ReadOptions) -> @agent_tool.ToolAction {
-  let content = @fs.read_file(options.path).text() catch {
+async fn read_file(input : @decode.ReadInput) -> @agent_tool.ToolAction {
+  let content = @fs.read_file(input.path).text() catch {
     error =>
       return @agent_tool.ToolAction::respond(
-        "error reading \{options.path}: \{error}",
+        "error reading \{input.path}: \{error}",
         is_error=true,
       )
   }
-  let selection = select_lines(content, options.start_line, options.max_lines)
-  let capped = cap_text(selection.content, options.max_output_chars)
-  let char_truncated = selection.content.length() > options.max_output_chars
-  let include_header = options.start_line != 1 ||
-    options.max_lines is Some(_) ||
+  let selection = select_lines(content, input.start_line, input.max_lines)
+  let capped = cap_text(selection.content, input.max_output_chars)
+  let char_truncated = selection.content.length() > input.max_output_chars
+  let include_header = input.start_line != 1 ||
+    input.max_lines is Some(_) ||
     char_truncated
   let output = if include_header {
-    read_header(options.path, content, selection, capped, char_truncated) +
-    capped
+    read_header(input.path, content, selection, capped, char_truncated) + capped
   } else {
     capped
   }
@@ -351,17 +258,17 @@ async test "read caps oversized output and marks it as an error" {
 
 ///|
 test "read parses and caps optional limits" {
-  let options = parse_options({
+  let input = @decode.decode({
     "path": "file.mbt",
     "start_line": 3,
     "max_lines": 4,
     "max_output_chars": 999999,
   })
-  assert_eq(options.path, "file.mbt")
-  assert_eq(options.start_line, 3)
-  guard options.max_lines is Some(max_lines) else { fail("missing max_lines") }
+  assert_eq(input.path, "file.mbt")
+  assert_eq(input.start_line, 3)
+  guard input.max_lines is Some(max_lines) else { fail("missing max_lines") }
   assert_eq(max_lines, 4)
-  assert_eq(options.max_output_chars, hard_max_output_chars)
+  assert_eq(input.max_output_chars, @decode.hard_max_output_chars)
 }
 
 ///|

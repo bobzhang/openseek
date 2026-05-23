@@ -1,0 +1,18 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/agent_tool/write/internal/decode"
+
+// Values
+pub fn decode(Json) -> WriteInput raise
+
+// Errors
+
+// Types and methods
+pub struct WriteInput {
+  path : String
+  content : String
+}
+
+// Type aliases
+
+// Traits
+

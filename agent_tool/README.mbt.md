@@ -19,7 +19,7 @@ Concrete built-in tools live in subpackages:
 
 - `AgentToolCall(@deepseek.ToolCall)`: parse DeepSeek's raw tool-call argument
   string into local JSON arguments.
-- `AgentToolDefinition(name, description, schema, execute)`: define one local
+- `AgentToolDefinition(name~, description~, schema~, execute~)`: define one local
   tool and its executor.
 - `ToolExecutor`: wrap synchronous or asynchronous executors.
 - `ToolOutput(content, is_error?)`: normal tool output sent back to the model.
@@ -50,6 +50,12 @@ Each concrete tool is a subpackage to keep the root package focused on the
 shared contract: parsing calls, advertising JSON schemas, dispatching tools,
 and representing typed output. This also makes it cheap to test or replace one
 tool without changing the registry or the agent loop.
+
+Concrete tools split execution into two explicit steps. Internal `decode`
+packages convert raw `Json` arguments into typed input records with focused
+validation tests. The tool package then turns that typed input into a
+`ToolAction`, keeping filesystem, process, and control-flow behavior separate
+from argument parsing.
 
 ## API Style
 
