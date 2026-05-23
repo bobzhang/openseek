@@ -131,6 +131,30 @@
 - Debug hygiene gap: the agent created temporary debug files/packages during diagnosis, including a root `debug_main.mbt` that broke compilation until removed, and it briefly overwrote the root `moon.pkg` with an empty file before repairing it.
 - Best next ROI: enforce MoonBit command policy at the shell layer, add semantic CLI contract checks for file-path tools and JSON stdout predicates, and require scratch/debug code to live outside compiled packages.
 
+## Cross-Evaluation Conclusion And Next Benchmark
+
+- Status: synthesis as of 2026-05-23 14:50 CST.
+- DeepSeek V4 Pro is strong enough for substantial MoonBit generation when the environment gives it tight feedback. It recovered from large compiler-error walls, fixed parser and validator logic, used semantic docs when available, and can finish complex library tasks under a 1000-step budget.
+- The highest-impact improvements so far were tool-level, not prompt-only: `moon_cmd` fixed the TOML V3 documented-CLI mismatch, command output caps prevented JSON Schema V1/V2 context blowups, `moon_ide` improved API discovery, and bounded `read` kept repair-loop file inspection focused.
+- The latest schema-validator V4 shows the current limiting factor clearly: the agent can make code compile and tests pass, but it can still miss the task's semantic contract. It finished with passing tests and an inline-JSON CLI, while the requested file-path CLI failed on fixtures.
+- The remaining weakness is acceptance validation. `moon test` and `moon run` only prove the command exited or the agent's own tests passed; they do not prove that the external contract was exercised, that file paths were consumed as files, or that stdout has the intended structure.
+- Prompt additions alone are now lower ROI. The agent already had guidance for native args, flat packages, small files, `moon_ide`, `moon_cmd`, and bounded reads. It still found a way around policy by using shell and still satisfied a weaker CLI interpretation.
+- Next challenging benchmark: `jqmini`, a small jq-style JSON query engine and native CLI. It should include expression parsing, evaluator pipes, selectors, `length`/`keys`/`has`, `select(...)`, file/stdin input, JSON Lines output for multiple results, README examples, fixtures, blackbox tests, native CLI tests, `moon info`, and `moon fmt`.
+- Run `jqmini` only after adding at least the next ROI guardrail below; otherwise it will mostly retest the known CLI-contract weakness from JSON Schema V4.
+
+## Next ROI Investment Ranking
+
+1. Add semantic CLI validation.
+   A dedicated tool or `moon_cmd` mode should run a command and assert contract-level facts: file-path arguments are used as files, stdout is valid JSON or JSON Lines, selected predicates hold, and stderr/stdout expectations match. This directly targets the JSON Schema V4 failure and will matter even more for `jqmini`.
+2. Enforce MoonBit command policy at the shell layer.
+   `moon_cmd` rejected an unreviewed `moon test --update`, but the agent bypassed it with shell. Shell should either reject guarded MoonBit commands or route them through the same validation policy. This closes the biggest tool-policy hole.
+3. Keep debug code out of deliverable packages.
+   Provide a scratch/debug package or policy that prevents temporary probes from being compiled with the target package. This would avoid regressions like `debug_main.mbt` breaking the schema-validator workspace.
+4. Add a staged acceptance checklist.
+   The agent should track required deliverables and prove each one: library API, CLI file mode, CLI stdin mode, README command, fixtures, tests, `moon info`, and formatting. This is useful, but it is more effective after semantic validation exists.
+5. Reduce remaining broad outputs.
+   Bounded `read` fixed file inspection, but shell listings and IDE/source dumps can still be noisy. This is useful hygiene, but lower ROI than contract validation and policy enforcement.
+
 ## Agent Performance Improvements To Investigate
 
 - Done: stream logs per step through async stdio instead of relying on buffered `println`. During this run the log stayed at 0 bytes for several minutes, then flushed in large chunks, which made live supervision difficult.
