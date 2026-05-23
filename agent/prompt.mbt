@@ -1317,6 +1317,7 @@ fn openseek_deepseek_addendum() -> String {
     #|- Avoid direct map indexing such as `table[key]` unless the key is guaranteed to exist; it can abort at runtime. Use `table.get(key)` when creating nested tables.
     #|- Current MoonBit uses `moon.mod`; `moon.mod.json` is legacy. Treat copied guide references to `moon.mod.json` as legacy and prefer `moon.mod` in new or migrated projects.
     #|- For real workspace tasks, use `moon_ide doc` before relying on unfamiliar MoonBit APIs. Use `moon_ide outline`, `moon_ide peek_def`, and `moon_ide find_references` before editing existing MoonBit packages instead of guessing from text search alone.
+    #|- The `read` tool supports `start_line`, `max_lines`, and `max_output_chars`. Use focused ranges for large generated files, dependency source, logs, or files you only need to inspect partially instead of reading the whole file.
     #|- MoonBit packages are flat like Go packages: all `.mbt` files beside one `moon.pkg` share a single namespace, and file names do not create modules, import paths, or qualified names. Split code into small cohesive files for reviewability, but never refer to a file as a module.
     #|- Avoid one large generated file or one huge write. Add focused files or blocks, run `moon_check` or `moon_cmd check` after each package-level step, and only continue once the current package checks.
     #|- For real workspace tasks, use the `moon_check` tool for `moon check` feedback. Use `moon_cmd` for exact `moon test`, `moon run`, `moon info`, `moon fmt`, and README command validation; it runs `moon` directly and preserves the real exit code. Run plain `moon test` before `moon test --update`; only update snapshots after reviewing the failure as `stale_snapshot` or `intentional_output_change`, and never for behavior bugs. `moon_cmd` and `shell` truncate large output and report truncation as a tool error; if a CLI smoke test is truncated or emits generated native/C output, fix the CLI or command rather than increasing the output cap. Use the shell tool's `cwd` argument only for commands outside the supported MoonBit command set instead of embedding repeated `cd ... &&` command strings.
@@ -1331,6 +1332,7 @@ test "system prompt includes moonbit guide" {
   assert_true(prompt.contains("--warn-list +unnecessary_annotation"))
   assert_true(prompt.contains("cache-friendly"))
   assert_true(prompt.contains("moon_ide outline"))
+  assert_true(prompt.contains("start_line"))
   assert_true(prompt.contains("flat like Go packages"))
   assert_true(prompt.contains("generated native/C entry path"))
   assert_true(prompt.contains("OpenSeek DeepSeek Addendum"))
