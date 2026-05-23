@@ -146,6 +146,22 @@
 - General conclusion: V4 Pro can now finish several non-trivial MoonBit tasks under the 1000-step budget, but it still spends many steps recovering from tool-shape mistakes and API discovery loops. The strongest run was the dependency solver because it worked in smaller validated increments; JSONPath had the hardest recovery because it wrote a large parser before the first useful check and repeatedly misunderstood JSON/async APIs.
 - Best ROI from this multi-task run: semantic CLI validation remains first, but the next tier should now include shell-level MoonBit command routing/quoting and manifest/package guardrails. These failures repeated across tasks and are not specific to jqmini.
 
+## DeepSeek V4 Pro Extensive Six-Task Eval
+
+- Status: completed as of 2026-05-23 after six parallel challenging runs with `DEEPSEEK_MODEL=deepseek-v4-pro` and `--max-steps 1000`.
+- Setup: the tasks were jqmini, JSONPath, CSVQL, semver dependency solver, Markdown outline/front-matter extractor, and HTTP route matcher. Logs total 16,914 lines under `.moonagent/eval_runs/results/openseek_*guarded*.log`.
+- Jqmini guarded V2: failed. The run stopped after 774 log lines with `OSError(@socket.Tcp::read(): Connection reset by peer)` after a huge `moon ide doc @array` response. Independent `moon check --output-json` still fails with 11 errors and 12 warnings, including error-type mismatches, nonexistent `Double::is_infinite`, nonexistent `Array::sorted`, and old `String::substring` call shapes.
+- JSONPath guarded V2: mostly succeeded. Independent validation: `moon check --output-json` passed with 5 deprecated `Show` warnings; `moon test --target native` passed 33/33; file and stdin CLI probes produced expected JSON Lines. Caveats: invalid-path mode returns exit 0 through `moon run` even though the built binary exits 1, and the final workspace still contains whitebox tests named `debug filter ...`.
+- CSVQL guarded V1: mostly succeeded. Independent validation: `moon check --output-json` passed, `moon test` passed 27/27, the temporary `cmd/csvql/debug.mbt` was removed, and quoted single-query CLI arguments work for file and stdin probes. Caveats: unquoted multi-word query probes are easy to miscall, and malformed CSV / invalid query modes return exit 0 with error text.
+- Semver solver guarded V2: strongest clean pass. Independent validation: `moon check --target all` passed, `moon test --target native` passed 20/20, file success/conflict/backtracking probes produced expected JSON, and stdin produced `{"ok":true,"lock":{"a":"1.1.0"}}`.
+- Markdown outline guarded V1: library and CLI output succeeded with an exit-code caveat. Independent validation: `moon check --target native` passed, `moon test --target native` passed 16/16, file and stdin CLI probes produced expected JSON, and the built binary exits 1 for unterminated front matter. Through `moon run`, the same error prints `username/md_outline/md_outline.OutlineError.UnterminatedFrontMatter` but exits 0.
+- Route matcher guarded V1: functional success with a dirty failure path. Independent validation: `moon check --output-json` and `moon check --target native` pass with 8 deprecated `assert_eq`/`Show` warnings; `moon test` passes 36/36; match and no-match CLI probes work. Invalid route patterns print `invalid pattern: /*path/stuff` but leak an abort/Panic stack; `moon run` reports exit 0 while the built binary exits 134.
+- General result: five of six runs delivered a compiling, tested project with useful CLI behavior. Only semver was close to contract-clean. The dominant remaining weakness is not raw MoonBit generation ability; it is external contract verification, especially CLI error mode, exit code, stdout/stderr separation, and whether the agent's final summary matches what users actually get from `moon run`.
+- Tool-call failure patterns: five runs hit the `moon.mod` current-syntax guardrail; semver and Markdown also hit suspiciously tiny `moon.pkg` guardrails. Shell/Moon command routing worked in places, but agents still made structured-command mistakes such as treating `moon_cmd` arguments like shell strings, using `moon run -c/-e` incorrectly, or probing generated binary paths by guessing `_build` layout.
+- API-discovery failure patterns: agents repeatedly guessed async/stdio/fs/error-exit APIs, used deprecated `derive(Show)` to satisfy formatting needs, and issued broad or invalid `moon ide doc` queries. The jqmini run shows the worst case: one oversized doc response was followed by a transport reset before recovery.
+- Debug/edit hygiene patterns: CSVQL temporarily left a second `main` in `cmd/csvql/debug.mbt`, JSONPath kept debug-named whitebox tests, and route/CSVQL logs show brittle `old_string` and missing-directory failures. These were often recoverable but cost many steps and sometimes polluted final quality.
+- Best ROI from the six-task batch: add a semantic CLI acceptance tool first, then a MoonBit CLI/error cookbook and output-shaped IDE docs. Prompt wording alone is not enough; the agent already had guidance for `moon.mod`, flat package structure, small files, `moon_cmd`, and `moon_ide`, but still overstated CLI failure contracts.
+
 ## Tool-Call Failure Review Method
 
 - Status: added after reviewing schema-validator V3/V4 logs.
@@ -162,30 +178,32 @@
 
 ## Cross-Evaluation Conclusion
 
-- Status: synthesis updated as of 2026-05-23 15:25 CST after the jqmini, JSONPath, and dependency-solver runs.
-- DeepSeek V4 Pro is strong enough for substantial MoonBit generation when the environment gives it tight feedback. It recovered from large compiler-error walls, fixed parser and validator logic, used semantic docs when available, and can finish complex library tasks under a 1000-step budget.
+- Status: synthesis updated as of 2026-05-23 after the schema-validator and six-task guarded evals.
+- DeepSeek V4 Pro is strong enough for substantial MoonBit library generation when the environment gives it tight feedback. It recovered from large compiler-error walls, fixed parser/validator logic, used semantic docs when available, and usually finished complex library tasks under a 1000-step budget.
 - The highest-impact improvements so far were tool-level, not prompt-only: `moon_cmd` fixed the TOML V3 documented-CLI mismatch, command output caps prevented JSON Schema V1/V2 context blowups, `moon_ide` improved API discovery, and bounded `read` kept repair-loop file inspection focused.
-- The schema-validator V4 and dependency-solver conflict output show the current limiting factor clearly: the agent can make code compile and tests pass, but it can still miss or pollute the external CLI contract.
-- The multi-task run adds a second limiting factor: many failed calls are not reasoning failures, but command-shape failures. Raw shell commands mishandle jq/JSONPath-like queries with `|`, quotes, brackets, and parentheses, and raw IDE queries have a syntax the agent repeatedly guesses wrong.
-- Prompt additions alone are now lower ROI. The agent already had guidance for native args, flat packages, small files, `moon_ide`, `moon_cmd`, and bounded reads. It still produced repeated tool-call failures and a dirty conflict CLI path, so the next improvements should enforce behavior in tools.
-- Future benchmarks should use several task shapes in one batch, as this run did. Jqmini alone would have suggested "mostly solved"; JSONPath exposed API/tool-call fragility; the dependency solver exposed semantic stderr/exit-contract fragility.
+- The current limiting factor is external contract reliability. Across schema-validator V4, dependency solver, JSONPath, Markdown, CSVQL, and route matcher, the agent often made code compile and tests pass while missing details that users notice immediately: file-vs-inline arguments, exit codes, stdout/stderr cleanliness, abort stack leaks, and whether a failing command really failed.
+- The six-task batch adds a second limiting factor: many failed calls are command-shape or tool-shape failures rather than reasoning failures. Queries with spaces, `|`, brackets, parentheses, and quotes stress shell and structured-command boundaries, while broad/invalid `moon_ide doc` calls still waste steps.
+- Prompt additions remain useful for MoonBit conventions, but they are now lower ROI than enforceable tool behavior. The agent already had guidance for native args, flat packages, small files, `moon.mod`, `moon_ide`, `moon_cmd`, and bounded reads; it still overstated several CLI error contracts in final summaries.
+- Future benchmarks should keep using several task shapes in one batch. Single tasks hide failure modes: semver looked clean, JSONPath exposed async/API discovery issues, CSVQL exposed argv/query-shape ambiguity, route matching exposed dirty abort paths, and jqmini exposed output-volume/transport fragility.
 
 ## Next ROI Investment Ranking
 
 1. Add semantic CLI validation.
-   A dedicated tool or `moon_cmd` mode should run a command and assert contract-level facts: file-path arguments are used as files, stdin mode works, stdout is valid JSON or JSON Lines, selected predicates hold, and stderr/stdout/exit-code expectations match. This directly targets JSON Schema V4 and the dependency-solver conflict leak.
-2. Route MoonBit commands through a structured shell policy.
-   Raw shell caused repeated quoting and policy problems for jqmini/JSONPath expressions and can bypass `moon_cmd` guardrails. Shell should either reject guarded MoonBit commands or route `moon`, `moon run`, and `moon test` through the same policy and output caps.
-3. Add manifest/package guardrails.
-   JSONPath repeatedly damaged or under-specified `moon.pkg`, and several runs confused legacy `moon.mod.json` with current `moon.mod`. Add validation after manifest writes and reject suspiciously tiny package files unless explicitly intended.
-4. Add automated tool-call failure summaries to eval reports.
+   A dedicated tool or `moon_cmd` mode should run acceptance probes and assert contract-level facts: file-path arguments are used as files, stdin mode works, stdout is valid JSON or JSON Lines, selected predicates hold, stderr is clean, and exit-code expectations match. It should optionally compare `moon run` behavior with the built native binary because JSONPath, Markdown, and route matcher exposed mismatches there.
+2. Add a MoonBit CLI/error-handling cookbook to the agent/tool docs.
+   The repeated high-cost gap is clean native CLI behavior: async file/stdin reads, `@env.args` shape, stdout/stderr writes, structured error JSON, and nonzero process exit without abort stacks. Give the agent a small proven pattern instead of making it rediscover `stdio`, `fs`, `io.Data`, and private `argparse` exit internals.
+3. Route MoonBit commands through a structured shell policy.
+   Raw shell caused repeated quoting and policy problems for jqmini/JSONPath/CSVQL-style expressions and can bypass `moon_cmd` guardrails. Shell should either reject guarded MoonBit commands or route `moon`, `moon run`, and `moon test` through the same policy and output caps.
+4. Shape `moon_ide` and source-output responses.
+   Keep docs and source reads focused by default, paginate broad symbol docs, and make invalid query errors actionable. The jqmini transport reset and JSONPath's long async I/O discovery loop both point to this.
+5. Add manifest/package guardrails.
+   Several runs confused legacy `moon.mod.json` with current `moon.mod` or wrote suspiciously tiny `moon.pkg` files. Add validation after manifest writes and reject package files that drop required imports/options unless explicitly intended.
+6. Add automated tool-call failure summaries to eval reports.
    Parse logs for avoidable argument, edit, manifest, and policy failures separately from expected compiler/test failures. This makes tool ergonomics measurable instead of anecdotal.
-5. Add a staged acceptance checklist.
+7. Add a staged acceptance checklist.
    The agent should track required deliverables and prove each one: library API, CLI file mode, CLI stdin mode, README command, fixtures, tests, `moon info`, and formatting. It should also force an early `moon check` after each small file batch.
-6. Keep debug code out of deliverable packages.
+8. Keep debug code out of deliverable packages.
    Provide a scratch/debug package or policy that prevents temporary probes from being compiled with the target package. This would avoid regressions like `debug_main.mbt` breaking the schema-validator workspace.
-7. Improve IDE/API discovery ergonomics.
-   Add examples or schema validation for common `moon_ide doc` queries and frequently used APIs (`Json`, async `fs`, `stdio`, `env.args`). This is lower ROI than contract validation, but JSONPath shows it can save many recovery steps.
 
 ## Agent Performance Improvements To Investigate
 
@@ -212,6 +230,7 @@
 - Done: add prompt guidance for native CLI arguments. In current native `moon run`, `@env.args()[0]` can be the generated C/native path, so the CLI must drop the executable path before reading user files.
 - Add shell-layer enforcement for MoonBit command policy. In V4 bounded-read, `moon_cmd` rejected unreviewed `moon test --update`, but the agent used shell to bypass the same guardrail.
 - Add a CLI semantic validation helper that can assert stdout is valid JSON, that file-path arguments are actually consumed as files, and that output matches a small predicate, not only that `moon run` exits 0.
+- Add a clean CLI failure helper or cookbook for nonzero native exits without `abort` stack traces, and make eval prompts require both success and failure probes.
 - Add an eval log summarizer that categorizes failed tool calls into expected domain failures, avoidable argument failures, avoidable edit failures, and policy bypasses.
 - Improve `edit` failure output for `old_string not found` by returning a compact hint: file size, whether the file changed since last read if available, and nearby candidate lines when a short substring matches.
 - Make tool schemas/descriptions sharper for conditional required fields such as `moon_ide.action = "doc"` requiring `query`.
