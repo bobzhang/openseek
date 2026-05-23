@@ -22,6 +22,7 @@ actual command line and process result.
 | `path` | string | no | One package/file path or main package. |
 | `paths` | string array | no | Additional package/file paths. |
 | `program_args` | string array | no | Arguments after `--`; only valid with `command = "run"`. |
+| `stdin` | string | no | Text sent to process stdin; only valid with `command = "run"`. |
 | `test_update_kind` | string | for `moon test --update` | `stale_snapshot` or `intentional_output_change`. |
 | `test_update_reason` | string | for `moon test --update` | Short explanation of the prior plain `moon test` failure review. |
 | `max_output_chars` | number | no | Defaults to 12000, capped at 50000. Truncated output is a tool error. |
@@ -56,6 +57,19 @@ for the command after `--`:
   "target": "native",
   "path": "cmd/main",
   "program_args": ["fixtures/schema.json", "fixtures/valid.json"]
+}
+```
+
+For stdin acceptance probes, pass `stdin` directly instead of using shell pipes:
+
+```json
+{
+  "command": "run",
+  "cwd": "/tmp/example_project",
+  "target": "native",
+  "path": "cmd/main",
+  "program_args": ["--from-stdin"],
+  "stdin": "{\"a\":1}\n"
 }
 ```
 

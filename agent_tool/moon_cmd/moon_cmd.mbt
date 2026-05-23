@@ -16,6 +16,8 @@
 /// - `paths` (array of strings, optional): additional package/file/main paths.
 /// - `program_args` (array of strings, optional): arguments after `--`; only
 ///   valid for `run`.
+/// - `stdin` (string, optional): text sent to process stdin; only valid for
+///   `run`.
 /// - `test_update_kind` (string, optional): required when running
 ///   `moon test --update`; use `stale_snapshot` or
 ///   `intentional_output_change`.
@@ -53,6 +55,7 @@ pub fn definition() -> @agent_tool.AgentToolDefinition {
         "path": { "type": "string" },
         "paths": { "type": "array", "items": { "type": "string" } },
         "program_args": { "type": "array", "items": { "type": "string" } },
+        "stdin": { "type": "string" },
         "test_update_kind": {
           "type": "string",
           "enum": ["stale_snapshot", "intentional_output_change"],
@@ -80,6 +83,7 @@ priv struct MoonCommandOptions {
   args : Array[String]
   paths : Array[String]
   program_args : Array[String]
+  stdin : String?
   test_update_kind : String?
   test_update_reason : String?
   max_output_chars : Int
@@ -130,6 +134,10 @@ fn parse_options(fields : Map[String, Json]) -> MoonCommandOptions raise {
   if program_args.length() > 0 && command != "run" {
     fail("arguments.program_args only with command run")
   }
+  let stdin = optional_string(fields, "stdin")
+  if stdin is Some(_) && command != "run" {
+    fail("arguments.stdin only with command run")
+  }
   let test_update_kind = optional_string(fields, "test_update_kind")
   let test_update_reason = optional_string(fields, "test_update_reason")
   let max_output_chars = optional_positive_int(
@@ -145,6 +153,7 @@ fn parse_options(fields : Map[String, Json]) -> MoonCommandOptions raise {
     args,
     paths,
     program_args,
+    stdin,
     test_update_kind,
     test_update_reason,
     max_output_chars: cap_max_output_chars(max_output_chars),
@@ -338,10 +347,7 @@ fn MoonCommandOptions::command_args(self : MoonCommandOptions) -> Array[String] 
 ///|
 async fn moon_cmd(options : MoonCommandOptions) -> @agent_tool.ToolAction {
   let args = options.command_args()
-  let (code, output) = match options.cwd {
-    Some(cwd) => @process.collect_output_merged("moon", args, cwd~)
-    None => @process.collect_output_merged("moon", args)
-  }
+  let (code, output) = collect_moon_output(args, options.cwd, options.stdin)
   let cwd_text = match options.cwd {
     Some(cwd) => cwd
     None => "."
@@ -351,13 +357,45 @@ async fn moon_cmd(options : MoonCommandOptions) -> @agent_tool.ToolAction {
     (Some(kind), Some(reason)) => "\nsnapshot_update=\{kind}: \{reason}"
     _ => ""
   }
+  let stdin_review = match options.stdin {
+    Some(input) => "\nstdin_chars=\{input.length()}"
+    None => ""
+  }
   let body = output.text()
   let capped = cap_text(body, options.max_output_chars)
   let truncation = truncation_header(body, options.max_output_chars)
   @agent_tool.ToolAction::respond(
-    "cwd=\{cwd_text}\ncommand=moon \{args.join(" ")}\{update_review}\nexit=\{code}\{truncation}\n\{capped}",
+    "cwd=\{cwd_text}\ncommand=moon \{args.join(" ")}\{update_review}\{stdin_review}\nexit=\{code}\{truncation}\n\{capped}",
     is_error=code != 0 || is_truncated(body, options.max_output_chars),
   )
+}
+
+///|
+async fn collect_moon_output(
+  args : Array[String],
+  cwd : String?,
+  stdin : String?,
+) -> (Int, &@io.Data) {
+  match stdin {
+    None =>
+      match cwd {
+        Some(cwd) => @process.collect_output_merged("moon", args, cwd~)
+        None => @process.collect_output_merged("moon", args)
+      }
+    Some(input) => {
+      let dir = @fs.tmpdir(prefix="openseek-moon-cmd-stdin-")
+      let input_path = dir + "/stdin"
+      @fs.write_file(input_path, input, create_mode=CreateOrTruncate)
+      let process_input = @process.redirect_from_file(input_path)
+      let result = match cwd {
+        Some(cwd) =>
+          @process.collect_output_merged("moon", args, stdin=process_input, cwd~)
+        None => @process.collect_output_merged("moon", args, stdin=process_input)
+      }
+      let _ = @fs.rmdir(dir, recursive=true) catch { _ => () }
+      result
+    }
+  }
 }
 
 ///|
@@ -391,6 +429,7 @@ test "moon_cmd advertises expected schema" {
   let text = schema.stringify()
   assert_true(text.contains("\"command\""))
   assert_true(text.contains("\"program_args\""))
+  assert_true(text.contains("\"stdin\""))
   assert_true(text.contains("\"target\""))
   assert_true(text.contains("\"test_update_kind\""))
   assert_true(text.contains("\"max_output_chars\""))
@@ -405,6 +444,7 @@ test "moon_cmd builds direct moon command arguments" {
     args: ["--quiet"],
     paths: ["cmd/main"],
     program_args: ["input.toml", "--pretty"],
+    stdin: None,
     test_update_kind: None,
     test_update_reason: None,
     max_output_chars: default_max_output_chars,
@@ -450,6 +490,17 @@ test "moon_cmd rejects program args outside run" {
     }
   }
   fail("invalid program args parsed")
+}
+
+///|
+test "moon_cmd rejects stdin outside run" {
+  let _ = parse_options({ "command": "test", "stdin": "input" }) catch {
+    error => {
+      assert_true("\{error}".contains("arguments.stdin"))
+      return
+    }
+  }
+  fail("invalid stdin parsed")
 }
 
 ///|
@@ -554,6 +605,31 @@ async test "moon_cmd validates a native fixture CLI when target is explicit" {
   )
   assert_true(stable.contains("exit=0"))
   assert_true(stable.contains("moon-cmd-ok"))
+}
+
+///|
+async test "moon_cmd passes stdin to native fixture CLI" {
+  let project = copy_fixture_project("native_cli_project")
+  let canonical = @fs.realpath(project)
+  let result = execute({
+    "cwd": project,
+    "command": "run",
+    "target": "native",
+    "path": "cmd/main",
+    "program_args": ["--stdin"],
+    "stdin": "hello\n",
+  })
+  let _ = @fs.rmdir(project, recursive=true) catch { _ => () }
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_false(output.is_error)
+  let stable = stable_moon_cmd_output(output.content, project, canonical)
+  assert_true(stable.contains("cwd=<fixture>"))
+  assert_true(
+    stable.contains("command=moon run --target native cmd/main -- --stdin"),
+  )
+  assert_true(stable.contains("stdin_chars=6"))
+  assert_true(stable.contains("exit=0"))
+  assert_true(stable.contains("stdin:hello"))
 }
 
 ///|
@@ -690,4 +766,5 @@ fn stable_moon_cmd_output(
   content
   .replace_all(old=canonical, new="<fixture>")
   .replace_all(old=project, new="<fixture>")
+  .replace_all(old="Using cached moonbitlang/async@0.19.1\n", new="")
 }
