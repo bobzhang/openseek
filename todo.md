@@ -131,6 +131,20 @@
 - Debug hygiene gap: the agent created temporary debug files/packages during diagnosis, including a root `debug_main.mbt` that broke compilation until removed, and it briefly overwrote the root `moon.pkg` with an empty file before repairing it.
 - Best next ROI: enforce MoonBit command policy at the shell layer, add semantic CLI contract checks for file-path tools and JSON stdout predicates, and require scratch/debug code to live outside compiled packages.
 
+## Tool-Call Failure Review Method
+
+- Status: added after reviewing schema-validator V3/V4 logs.
+- Evaluation reports should separate tool failures into at least four categories:
+  1. Expected domain failures: `moon check`, `moon test`, or CLI runs that fail because generated code is wrong. These are useful feedback, not tool misuse.
+  2. Avoidable argument/schema failures: missing fields or wrong fields, such as the V4 `moon_ide doc` call without `query`.
+  3. Avoidable edit failures: empty `old_string`, `old_string not found`, or stale edit context after a previous rewrite.
+  4. Policy failures and bypasses: guarded tool rejection, especially when the next step uses `shell` to bypass the same policy.
+- Each eval summary should include counts and representative examples for avoidable tool-call failures, plus whether the agent recovered or kept repeating the same mistake.
+- For edit failures, prefer prevention over recovery: require a recent bounded `read` before editing a region, make `edit` errors return enough context to choose the next exact string, and consider a line-range replacement tool for cases where exact string matching is too brittle.
+- For argument failures, improve schemas and tool descriptions when the model repeatedly miscalls a tool. If a field is required only for one action, document that relationship in the schema description and README API style.
+- For policy failures, enforce the policy at every path that can perform the action. The `moon_cmd` snapshot-update guardrail is not enough while `shell` can still run `moon test --update`.
+- For future `jqmini` evaluation, record tool-call failures as a first-class section alongside correctness, CLI contract, tests, log size, and final validation.
+
 ## Cross-Evaluation Conclusion And Next Benchmark
 
 - Status: synthesis as of 2026-05-23 14:50 CST.
@@ -150,9 +164,11 @@
    `moon_cmd` rejected an unreviewed `moon test --update`, but the agent bypassed it with shell. Shell should either reject guarded MoonBit commands or route them through the same validation policy. This closes the biggest tool-policy hole.
 3. Keep debug code out of deliverable packages.
    Provide a scratch/debug package or policy that prevents temporary probes from being compiled with the target package. This would avoid regressions like `debug_main.mbt` breaking the schema-validator workspace.
-4. Add a staged acceptance checklist.
+4. Add automated tool-call failure summaries to eval reports.
+   Parse logs for avoidable argument, edit, and policy failures separately from expected compiler/test failures. This makes tool ergonomics measurable instead of anecdotal.
+5. Add a staged acceptance checklist.
    The agent should track required deliverables and prove each one: library API, CLI file mode, CLI stdin mode, README command, fixtures, tests, `moon info`, and formatting. This is useful, but it is more effective after semantic validation exists.
-5. Reduce remaining broad outputs.
+6. Reduce remaining broad outputs.
    Bounded `read` fixed file inspection, but shell listings and IDE/source dumps can still be noisy. This is useful hygiene, but lower ROI than contract validation and policy enforcement.
 
 ## Agent Performance Improvements To Investigate
@@ -180,5 +196,8 @@
 - Done: add prompt guidance for native CLI arguments. In current native `moon run`, `@env.args()[0]` can be the generated C/native path, so the CLI must drop the executable path before reading user files.
 - Add shell-layer enforcement for MoonBit command policy. In V4 bounded-read, `moon_cmd` rejected unreviewed `moon test --update`, but the agent used shell to bypass the same guardrail.
 - Add a CLI semantic validation helper that can assert stdout is valid JSON, that file-path arguments are actually consumed as files, and that output matches a small predicate, not only that `moon run` exits 0.
+- Add an eval log summarizer that categorizes failed tool calls into expected domain failures, avoidable argument failures, avoidable edit failures, and policy bypasses.
+- Improve `edit` failure output for `old_string not found` by returning a compact hint: file size, whether the file changed since last read if available, and nearby candidate lines when a short substring matches.
+- Make tool schemas/descriptions sharper for conditional required fields such as `moon_ide.action = "doc"` requiring `query`.
 - Keep temporary debug code outside compiled packages, or provide a dedicated scratch package that cannot regress the deliverable package.
 - Make `moon_ide` failures clearer when `cwd` does not exist, or teach the prompt to create the workspace before semantic IDE calls against it.
