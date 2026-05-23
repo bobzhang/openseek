@@ -45,3 +45,4 @@ pub async fn Logger::write_string(Self, String) -> Unit
 // Type aliases
 
 // Traits
+
