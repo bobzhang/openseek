@@ -4,5 +4,10 @@ _build/
 .moonagent/
 .repos/
 eval/*
+!eval/README.md
 !eval/file_edit/
 !eval/file_edit/**
+!eval/report/
+!eval/report/**
+!eval/tool_harness/
+!eval/tool_harness/**

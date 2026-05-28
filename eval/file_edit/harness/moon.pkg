@@ -1,6 +1,7 @@
 import {
   "bobzhang/openseek/deepseek",
   "bobzhang/openseek/eval/file_edit/cases",
+  "bobzhang/openseek/eval/report",
   "bobzhang/openseek/testkit/filesystem" @vfs,
   "moonbitlang/async",
   "moonbitlang/async/fs",

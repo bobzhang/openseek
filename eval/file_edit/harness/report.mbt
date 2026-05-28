@@ -1,15 +1,6 @@
 ///|
 async fn write_report_files(report : EvalReport) -> Unit {
-  @fs.write_file(
-    report.out_dir + "/report.json",
-    report.to_json().stringify(),
-    create_mode=CreateOrTruncate,
-  )
-  @fs.write_file(
-    report.out_dir + "/report.md",
-    report.markdown(),
-    create_mode=CreateOrTruncate,
-  )
+  @report.write_files(report.out_dir, report.markdown(), report.to_json())
 }
 
 ///|
@@ -58,43 +49,54 @@ pub fn EvalReport::failure_message(self : EvalReport) -> String {
 
 ///|
 pub fn EvalReport::markdown(self : EvalReport) -> String {
-  let lines : Array[String] = [
-    (
-      $|# File Edit Eval
-      $|
-      $|- model: `\{self.model}`
-      $|- result: `\{self.successes}/\{self.runs}` successes
-      $|- threshold: `\{self.min_successes}/\{self.runs}`
-      $|- passed: `\{self.passed()}`
-      $|- output: `\{self.out_dir}`
-      $|
-      $|| # | Case | Result | Steps | Tool Errors | Shell Uses | Reason | Warnings |
-      $|| --- | --- | --- | ---: | ---: | ---: | --- | --- |
-    ),
-  ]
-  for result in self.results {
-    lines.push(
-      "| \{result.index} | `\{result.case_id}` | \{if result.success { "pass" } else { "fail" }} | \{result.steps} | \{result.tool_errors} | \{result.shell_uses} | \{escape_table_cell(result.reason)} | \{escape_table_cell(result.warnings)} |",
-    )
-  }
-  lines.push(
-    (
-      $|
-      $|## Logs
-      $|
-    ),
-  )
-  for result in self.results {
-    lines.push(
-      "- `\{result.case_id}` trial \{result.index}: `\{result.log_path}`",
-    )
-  }
-  lines.join("\n") + "\n"
+  self.as_report().markdown()
 }
 
 ///|
-fn escape_table_cell(text : String) -> String {
-  text
-  |> String::replace_all(old="|", new="\\|")
-  |> String::replace_all(old="\n", new=" ")
+fn EvalReport::as_report(self : EvalReport) -> @report.Report {
+  Report(
+    title="File Edit Eval",
+    summary=[
+      Metric(name="model", value=self.model),
+      Metric(name="result", value="\{self.successes}/\{self.runs} successes"),
+      Metric(name="threshold", value="\{self.min_successes}/\{self.runs}"),
+      Metric(name="passed", value=self.passed().to_string()),
+      Metric(name="output", value=self.out_dir),
+    ],
+    metric_columns=[
+      "Steps", "Tool Errors", "Shell Uses", "Edit Successes", "Write Successes",
+      "Exit Code", "Validation", "Marker",
+    ],
+    rows=[
+      for result in self.results => {
+        ReportRow(
+          index=result.index,
+          name=result.case_id,
+          success=result.success,
+          reason=result.reason,
+          warnings=result.warnings,
+          metrics=[
+            Metric(name="Steps", value=result.steps.to_string()),
+            Metric(name="Tool Errors", value=result.tool_errors.to_string()),
+            Metric(name="Shell Uses", value=result.shell_uses.to_string()),
+            Metric(
+              name="Edit Successes",
+              value=result.edit_successes.to_string(),
+            ),
+            Metric(
+              name="Write Successes",
+              value=result.write_successes.to_string(),
+            ),
+            Metric(name="Exit Code", value=result.exit_code.to_string()),
+            Metric(
+              name="Validation",
+              value=result.validation_passed.to_string(),
+            ),
+            Metric(name="Marker", value=result.marker_present.to_string()),
+          ],
+          log_path=result.log_path,
+        )
+      }
+    ],
+  )
 }
