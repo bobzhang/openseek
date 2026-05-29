@@ -33,6 +33,8 @@ test "flash prompt includes flash addenda" {
   assert_true(prompt.contains("Do not emit JSON action plans"))
   assert_true(prompt.contains("moon run -e"))
   assert_true(prompt.contains("Do not use `moon run -c`"))
+  assert_true(prompt.contains("Do not run\n  `moon run -e`"))
+  assert_true(prompt.contains("send the code on stdin"))
   assert_true(prompt.contains("snippets may include an `import` block"))
   assert_true(prompt.contains("moon run --target native -e"))
   assert_true(prompt.contains("\"moonbitlang/async@0.19.1\""))
@@ -62,24 +64,34 @@ test "flash prompt includes flash addenda" {
   assert_true(prompt.contains("@string.from_str"))
   assert_true(prompt.contains("not write `@string.from_str[:Int](text)`"))
   assert_true(prompt.contains("inspect(n, content=\"123\")"))
-  assert_true(prompt.contains("In tests, call raising functions directly"))
-  assert_true(prompt.contains("the test fails with\n  the error"))
-  assert_true(
-    prompt.contains("already returns an explicit success/failure value"),
-  )
+  assert_true(prompt.contains("In success tests, call raising functions"))
+  assert_true(prompt.contains("fails with the error"))
   assert_true(prompt.contains("Use checked errors for ordinary parser"))
   assert_true(prompt.contains("Think of `raise` as a checked effect"))
+  assert_true(prompt.contains("different from unchecked exceptions"))
+  assert_true(prompt.contains("different from ordinary error\n  return values"))
+  assert_true(prompt.contains("less plumbing"))
+  assert_true(prompt.contains("success-path code direct"))
   assert_true(
     prompt.contains("Let errors travel through internal parser layers"),
   )
+  assert_true(prompt.contains("Do not wrap successful\n  parser tests"))
+  assert_true(prompt.contains("wrap raising calls in a manual success/failure"))
+  assert_true(prompt.contains("prefer a CLI acceptance probe"))
   assert_true(prompt.contains("suberror ParseError"))
   assert_true(prompt.contains("fn main raise"))
   assert_true(prompt.contains("async fn main` already can raise"))
   assert_true(prompt.contains("do not write `async fn main raise`"))
+  assert_true(prompt.contains("do not encode failure as `Json::null`, `()`"))
   assert_true(prompt.contains("For custom errors, use `suberror`"))
-  assert_true(
-    prompt.contains("already returns an explicit success/failure value"),
+  assert_false(
+    prompt.contains(
+      "Prelude types such as `Array`,\n  `Map`, `Json`, `StringBuilder`, `Result`",
+    ),
   )
+  assert_false(prompt.contains("Result"))
+  assert_false(prompt.contains("Ok("))
+  assert_false(prompt.contains("Err("))
   assert_false(prompt.contains("prefer `Result[T, String]`"))
   assert_false(
     prompt.contains("Prefer checked errors over `Result[T, String]`"),
@@ -103,6 +115,9 @@ test "flash prompt includes flash addenda" {
   assert_true(prompt.contains("Json::object(map)"))
   assert_true(prompt.contains("Json::boolean(b)"))
   assert_true(prompt.contains("Empty no-op expression is `()`"))
+  assert_true(prompt.contains("Do not write `\\(expr)`"))
+  assert_true(prompt.contains("$|error: \\{name}"))
+  assert_true(prompt.contains("$|line: \\{line}"))
   assert_true(
     prompt.contains("Do not implement ordinary file/stdin IO with C FFI"),
   )
