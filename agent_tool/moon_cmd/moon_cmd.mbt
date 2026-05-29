@@ -504,6 +504,81 @@ async test "moon_cmd reports failing fixture tests as tool errors" {
 }
 
 ///|
+async test "moon_cmd runs a virtual filesystem native CLI fixture" {
+  let project = @fs.tmpdir(prefix="openseek-moon-cmd-vfs-")
+  @vfs.FileSystem({
+    "moon.mod": (
+      #|name = "openseek/moon_cmd_vfs_fixture"
+      #|
+      #|version = "0.1.0"
+      #|
+      #|preferred_target = "native"
+      #|
+    ),
+    "cmd/main/moon.pkg": (
+      #|import {
+      #|  "moonbitlang/core/env"
+      #|}
+      #|
+      #|supported_targets = "+native"
+      #|
+      #|options(
+      #|  "is-main": true,
+      #|)
+      #|
+    ),
+    "cmd/main/main.mbt": (
+      #|///|
+      #|fn main {
+      #|  if has_probe_arg() {
+      #|    println("moon-cmd-vfs-probe")
+      #|  } else {
+      #|    println("moon-cmd-vfs-missing")
+      #|  }
+      #|}
+      #|
+      #|///|
+      #|fn has_probe_arg() -> Bool {
+      #|  for arg in @env.args() {
+      #|    if arg == "--probe" {
+      #|      return true
+      #|    }
+      #|  }
+      #|  false
+      #|}
+      #|
+    ),
+    "cmd/main/main_wbtest.mbt": (
+      #|///|
+      #|test "probe helper default" {
+      #|  assert_false(has_probe_arg())
+      #|}
+      #|
+    ),
+  }).write_to(project)
+  let canonical = @fs.realpath(project)
+  let result = execute({
+    "cwd": project,
+    "command": "run",
+    "target": "native",
+    "path": "cmd/main",
+    "program_args": ["--probe"],
+  })
+  let _ = @fs.rmdir(project, recursive=true) catch { _ => () }
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_false(output.is_error)
+  inspect(
+    stable_moon_cmd_output(output.content, project, canonical).trim(),
+    content=(
+      #|cwd=<fixture>
+      #|command=moon run --target native cmd/main -- --probe
+      #|exit=0
+      #|moon-cmd-vfs-probe
+    ),
+  )
+}
+
+///|
 async fn copy_fixture_project(name : String) -> String {
   let target = @fs.tmpdir(prefix="openseek-moon-cmd-")
   @fs.mkdir(target + "/cmd/main", recursive=true)

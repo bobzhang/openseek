@@ -212,6 +212,46 @@ async test "moon_check reports diagnostics from a broken fixture project" {
 }
 
 ///|
+async test "moon_check validates a virtual filesystem package path" {
+  let project = @fs.tmpdir(prefix="openseek-moon-check-vfs-")
+  @vfs.FileSystem({
+    "moon.mod": (
+      #|name = "openseek/moon_check_vfs_fixture"
+      #|
+      #|version = "0.1.0"
+      #|
+      #|preferred_target = "native"
+      #|
+    ),
+    "math/moon.pkg": (
+      #|warnings = "+unnecessary_annotation"
+      #|
+    ),
+    "math/math.mbt": (
+      #|///|
+      #|pub fn add(left : Int, right : Int) -> Int {
+      #|  left + right
+      #|}
+      #|
+    ),
+  }).write_to(project)
+  let canonical = @fs.realpath(project)
+  let result = execute({ "cwd": project, "path": "math", "target": "native" })
+  let _ = @fs.rmdir(project, recursive=true) catch { _ => () }
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_false(output.is_error)
+  inspect(
+    stable_moon_check_output(output.content, project, canonical),
+    content=(
+      #|cwd=<fixture>
+      #|command=moon check --output-json --target native math
+      #|exit=0
+      #|Finished. moon: ran 2 tasks, now up to date
+    ),
+  )
+}
+
+///|
 async fn copy_fixture_project(name : String) -> String {
   let target = @fs.tmpdir(prefix="openseek-moon-check-")
   copy_fixture_file(name, "moon.mod.fixture", target + "/moon.mod")

@@ -2,6 +2,7 @@ import {
   "bobzhang/openseek/agent_tool",
   "bobzhang/openseek/agent_tool/internal/error" @tool_error,
   "bobzhang/openseek/agent_tool/moon_cmd/internal/decode",
+  "bobzhang/openseek/testkit/filesystem" @vfs,
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/io",

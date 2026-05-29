@@ -234,6 +234,28 @@ async test "shell honors cwd when non-empty" {
 }
 
 ///|
+async test "shell reads a virtual filesystem fixture from cwd" {
+  let project = @fs.tmpdir(prefix="openseek-shell-vfs-")
+  @vfs.FileSystem({
+    "data/input.txt": (
+      #|shell-vfs
+      #|
+    ),
+  }).write_to(project)
+  let result = execute({ "cmd": "cat data/input.txt", "cwd": project })
+  let _ = @fs.rmdir(project, recursive=true) catch { _ => () }
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_false(output.is_error)
+  inspect(
+    output.content.trim(),
+    content=(
+      #|exit=0
+      #|shell-vfs
+    ),
+  )
+}
+
+///|
 async test "shell treats empty cwd as missing" {
   let result = execute({ "cmd": "echo cwdless", "cwd": "" })
   guard result is Respond(output) else { fail("expected Respond") }
