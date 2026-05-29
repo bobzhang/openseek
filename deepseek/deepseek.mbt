@@ -7,7 +7,7 @@ pub(all) enum Model {
 
 ///|
 /// Returns the DeepSeek wire name for a chat model.
-pub impl Show for Model with to_string(self : Model) -> String {
+pub impl Show for Model with fn to_string(self : Model) -> String {
   match self {
     V4Flash => "deepseek-v4-flash"
     V4Pro => "deepseek-v4-pro"
@@ -33,7 +33,7 @@ pub(all) enum ThinkingMode {
 
 ///|
 /// Returns the DeepSeek wire name for a thinking mode toggle.
-pub impl Show for ThinkingMode with to_string(self : ThinkingMode) -> String {
+pub impl Show for ThinkingMode with fn to_string(self : ThinkingMode) -> String {
   match self {
     Enabled => "enabled"
     Disabled => "disabled"
@@ -49,7 +49,7 @@ pub(all) enum ReasoningEffort {
 
 ///|
 /// Returns the DeepSeek wire name for a reasoning effort.
-pub impl Show for ReasoningEffort with to_string(self : ReasoningEffort) -> String {
+pub impl Show for ReasoningEffort with fn to_string(self : ReasoningEffort) -> String {
   match self {
     High => "high"
     Max => "max"
@@ -70,7 +70,7 @@ pub(all) enum Role {
 
 ///|
 /// Returns the DeepSeek wire name for a chat message role.
-pub impl Show for Role with to_string(self : Role) -> String {
+pub impl Show for Role with fn to_string(self : Role) -> String {
   match self {
     System => "system"
     User => "user"
