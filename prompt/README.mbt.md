@@ -11,14 +11,8 @@ functions through the module-level `md_to_mbt_string` dev-build rule.
 
 ## API Shape
 
-- `base_system_prompt()`: return the base built-in prompt.
-- `flash_system_prompt()`: return the Flash built-in prompt.
-- `system_prompt_for_model(model, purpose?)`: select the prompt for a DeepSeek
-  model. `purpose` currently supports `Coding` and `Review`; both route to the
-  same model-specific prompt today, but the API keeps task-mode specialization
-  out of the agent loop.
-- `system_prompt(context)`: select with an explicit `PromptContext` when future
-  factors outgrow the simple helper.
+- `system_prompt_for_model(model)`: select the built-in prompt for a DeepSeek
+  model.
 
 The agent package depends on this package for its default prompt, while the CLI
 can still override or append prompt files for A/B experiments.

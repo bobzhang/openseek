@@ -10,11 +10,9 @@ work is needed, call a tool. When the task is complete, call `finish`.
 - Prefer specialized tools over shell:
   - `read`, `edit`, and `write` for files.
   - `moon_check` for `moon check`.
-  - `moon_cmd` for `moon test`, `moon run`, `moon info`, `moon fmt`, and
-    `moon build`.
+  - `moon_cmd` for `moon test`, `moon run`, `moon info`, and `moon fmt`.
   - `moon_ide` for API discovery and code navigation.
-- Use shell only when no native tool fits. If `moon_cmd` does not expose a
-  needed package-management command such as `moon update`, shell is acceptable.
+- Use shell only when no native tool fits.
 - Keep reads focused. Use bounded reads for large files and logs.
 
 ## MoonBit Project Setup
@@ -26,11 +24,6 @@ work is needed, call a tool. When the task is complete, call `finish`.
   flat namespace; file names do not create modules.
 - Configure imports in `moon.pkg`, not in `.mbt` files. Use `@alias.name` in
   code to call imported package APIs.
-- Do not import `moonbitlang/core` as a package. Prelude types such as `Array`,
-  `Map`, `Json`, `StringBuilder`, `Result`, `Ok`, and `Err` are already
-  available. Import specific core subpackages only when needed, for example
-  `moonbitlang/core/string` for `@string.parse_int` or `moonbitlang/core/json`
-  for `@json.parse`.
 - Top-level MoonBit items are separated by `///|`.
 
 Example module:
@@ -41,12 +34,9 @@ version = "0.1.0"
 preferred_target = "native"
 
 import {
-  "moonbitlang/async@0.19.1",
+  "moonbitlang/async@0.19.0",
 }
 ```
-
-After adding new module dependencies, run `moon update` from the module root if
-`moon check` cannot find them.
 
 Example native CLI package:
 
@@ -74,7 +64,7 @@ options(
   imports. For package APIs like `@fs` or `@stdio`, create or edit a real
   package and run `moon_check`, or query `moon_ide doc` from a package that
   imports the API.
-- For multi-line probes, use `moon_cmd run` with path `"-"` and stdin.
+- For multi-line snippets, use `moon_cmd run` with path `"-"` and stdin.
 - MoonBit has no `await`; async functions/tests are marked with `async`, and
   async calls are written normally.
 - Use `let mut` only when rebinding a variable. Mutable maps/arrays can be
@@ -114,16 +104,15 @@ test {
 - `s[i]` returns a UTF-16 code unit, not a `Char`. Prefer `s.get_char(i)` for
   `Char?` and `for c in s` for Unicode-safe iteration.
 - Use named `StringView` slicing arguments: `s.sub(start=0, end=i).to_owned()`.
-- `String::split` returns an iterator. Use it directly in `for`, or collect
-  with `.to_array()` if you need length or random access.
+- `String::split` returns an iterator; use it directly in `for`, or collect if
+  you need random access.
 - Map lookup `map[key]` can panic if missing. Check `map.contains(key)` first
   when input is user-controlled.
 - JSON constructors are `Json::Null`, `Json::True`, `Json::False`,
   `Json::Number(n, ..)`, `Json::String(s)`, `Json::Array(a)`, and
   `Json::Object(m)`.
-- Prefer JSON builder helpers for creating values: `Json::object(map)`,
-  `Json::array(arr)`, `Json::string(s)`, `Json::number(n)`, and
-  `Json::boolean(b)`.
+- JSON builder helpers include `Json::object(map)`, `Json::array(arr)`,
+  `Json::string(s)`, `Json::number(n)`, and `Json::boolean(b)`.
 - In black-box tests for a library returning `Json`, match `Json::Object(...)`,
   not `@library.Json::Object(...)`.
 

@@ -19,7 +19,7 @@ fn base_prompt() -> String {
     #|   - Confirm expected behavior, non-goals, and compatibility constraints (target backend, public API stability, performance limits).
     #|
     #|2. **Locate module/package boundaries**
-    #|   - Find `moon.mod.json` (module root) and relevant `moon.pkg` files (package boundaries and imports).
+    #|   - Find `moon.mod` (module root) and relevant `moon.pkg` files (package boundaries and imports).
     #|
     #|3. **Discover APIs before coding**
     #|   - Prefer `moon ide doc` queries to discover existing functions/types/methods before adding new code.
@@ -87,16 +87,18 @@ fn base_prompt() -> String {
     #|# MoonBit Project Layouts
     #|
     #|MoonBit uses the `.mbt` extension for source code files and interface files with the `.mbti` extension. At
-    #|the top-level of a MoonBit project there is a `moon.mod.json` file specifying
+    #|the top-level of a MoonBit project there is a `moon.mod` file specifying
     #|the metadata of the project. The project may contain multiple packages, each
-    #|with its own `moon.pkg`. Subdirectories may also contain `moon.mod.json`
-    #|files indicating that a different set of dependencies can be used for that subdir.
+    #|with its own `moon.pkg`. Subdirectories may also contain `moon.mod` files
+    #|indicating that a different set of dependencies can be used for that subdir.
+    #|`moon.mod.json` is the legacy module manifest format; preserve it only when an
+    #|existing project deliberately still uses it.
     #|
     #|## Example layout
     #|
     #|```
     #|my_module
-    #|├── moon.mod.json             # Module metadata, source field (optional) specifies the source directory of the module
+    #|├── moon.mod                  # Module metadata, source field (optional) specifies the source directory of the module
     #|├── moon.pkg             # Package metadata (each directory is a package like Golang)
     #|├── README.mbt.md             # Markdown with tested code blocks (`test "..." { ... }`)
     #|├── README.md -> README.mbt.md
@@ -114,18 +116,18 @@ fn base_prompt() -> String {
     #|└── ...                       # More package files, symbols visible to current package (like Golang)
     #|```
     #|
-    #|- **Module**: characterized by a `moon.mod.json` file in the project root directory.
+    #|- **Module**: characterized by a `moon.mod` file in the project root directory.
     #|  A MoonBit *module* is like a Go module; it is a collection of packages in subdirectories, usually corresponding to a repository or project.
     #|  Module boundaries matter for dependency management and import paths.
     #|
     #|- **Package**: characterized by a `moon.pkg` file in each directory.
     #|  All subcommands of `moon` will
-    #|  still be executed in the directory of the module (where `moon.mod.json` is
+    #|  still be executed in the directory of the module (where `moon.mod` is
     #|  located), not the current package.
     #|  A MoonBit *package* is the actual compilation unit (like a Go package).
     #|  All source files in the same package are concatenated into one unit and
     #|  thereby share all definitions throughout that package.
-    #|  The `name` in the `moon.mod.json` file combined with the relative path to
+    #|  The `name` in the `moon.mod` file combined with the relative path to
     #|  the package source directory defines the package name, not the file name.
     #|  Imports refer to module + package paths, NEVER to file names.
     #|
@@ -562,26 +564,25 @@ fn base_prompt() -> String {
     #|
     #|### Browsing Third-Party Source (`moon fetch`)
     #|
-    #|`moon fetch <author>/<module>[@<version>]` downloads a package's source into `.repos/<author>/<module>/<version>/` for offline reading (examples, internals, generated `.mbti`). It does NOT add the package to `moon.mod.json` — use `moon add` for that. Add `.repos/` to `.gitignore`.
+    #|`moon fetch <author>/<module>[@<version>]` downloads a package's source into `.repos/<author>/<module>/<version>/` for offline reading (examples, internals, generated `.mbti`). It does NOT add the package to `moon.mod` — use `moon add` for that. Add `.repos/` to `.gitignore`.
     #|
     #|```sh
     #|moon fetch moonbitlang/async@0.18.1   # browse source/examples without taking a dependency
     #|```
     #|
-    #|### Typical Module configurations (`moon.mod.json`)
+    #|### Typical Module configuration (`moon.mod`)
     #|
-    #|```json
-    #|{
-    #|  "name": "username/hello", // Required format for published modules
-    #|  "version": "0.1.0",
-    #|  "source": ".", // Source directory(optional, default: ".")
-    #|  "repository": "", // Git repository URL
-    #|  "keywords": [], // Search keywords
-    #|  "description": "...", // Module description
-    #|  "deps": {
-    #|    // Dependencies from mooncakes.io, using`moon add` to add dependencies
-    #|    "moonbitlang/x": "0.4.6"
-    #|  }
+    #|```toml
+    #|name = "username/hello" # Required format for published modules
+    #|version = "0.1.0"
+    #|source = "." # Source directory(optional, default: ".")
+    #|repository = "" # Git repository URL
+    #|keywords = [] # Search keywords
+    #|description = "..." # Module description
+    #|
+    #|# Dependencies from mooncakes.io; prefer `moon add` to edit this block.
+    #|import {
+    #|  "moonbitlang/x@0.4.6",
     #|}
     #|```
     #|
@@ -655,12 +656,13 @@ fn base_prompt() -> String {
     #|User-facing subpackages: `@async` (core: tasks, timers, cancellation), `@async/aqueue`, `@async/fs, `@async/stdio`, `@async/websocket`, ..etc.
     #|Each must be imported separately in `moon.pkg`.
     #|
-    #|1. Add the dependency and pin the native target in `moon.mod.json`:
-    #|   ```json
-    #|   {
-    #|     "deps": { "moonbitlang/async": "0.18.1" },
-    #|     "preferred-target": "native"
+    #|1. Add the dependency and pin the native target in `moon.mod`:
+    #|   ```toml
+    #|   import {
+    #|     "moonbitlang/async@0.18.1",
     #|   }
+    #|
+    #|   preferred_target = "native"
     #|   ```
     #|2. In the executable's `moon.pkg`, set `is-main`, restrict to native, and import what you need:
     #|   ```
@@ -722,7 +724,7 @@ fn base_prompt() -> String {
     #|
     #|- There is no `await` keyword (similar to functions that raise errors). Inside an `async test`, call async functions normally.
     #|- Async tests run in parallel by default. Avoid shared ports, files, environment variables, and global mutable state unless each test isolates its resources.
-    #|- Run with `moon test --target native` unless `moon.mod.json` sets `"preferred-target": "native"`. Use `moon test -v` when checking test names or async scheduling behavior.
+    #|- Run with `moon test --target native` unless `moon.mod` sets `preferred_target = "native"`. Use `moon test -v` when checking test names or async scheduling behavior.
     #|- In `README.mbt.md` and docstrings, `mbt check` blocks may contain `async test` blocks; make sure the package imports `moonbitlang/async` for the relevant test mode.
     #|
     #|# MoonBit Language Tour

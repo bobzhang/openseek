@@ -181,12 +181,10 @@ async test "configured system prompt defaults by model" {
     "DEEPSEEK": "test-key",
   })
   assert_true(
-    configured_system_prompt(parsed, V4Flash).contains(
-      "OpenSeek Flash Addendum",
-    ),
+    configured_system_prompt(parsed, V4Flash).contains("DeepSeek V4 Flash"),
   )
   assert_false(
-    configured_system_prompt(parsed, V4Pro).contains("OpenSeek Flash Addendum"),
+    configured_system_prompt(parsed, V4Pro).contains("DeepSeek V4 Flash"),
   )
 }
 

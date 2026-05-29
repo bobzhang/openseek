@@ -4,7 +4,7 @@ let default_max_steps : Int = 1000
 ///|
 /// Returns the base built-in system prompt.
 pub fn default_system_prompt() -> String {
-  @prompt.base_system_prompt()
+  @prompt.system_prompt_for_model(V4Pro)
 }
 
 ///|

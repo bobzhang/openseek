@@ -3,31 +3,14 @@ package "bobzhang/openseek/prompt"
 
 import {
   "bobzhang/openseek/deepseek",
-  "moonbitlang/core/debug",
 }
 
 // Values
-pub fn base_system_prompt() -> String
-
-pub fn flash_system_prompt() -> String
-
-pub fn system_prompt(PromptContext) -> String
-
-pub fn system_prompt_for_model(@deepseek.Model, purpose? : PromptPurpose) -> String
+pub fn system_prompt_for_model(@deepseek.Model) -> String
 
 // Errors
 
 // Types and methods
-pub struct PromptContext {
-  model : @deepseek.Model
-  purpose : PromptPurpose
-} derive(Eq, @debug.Debug)
-pub fn PromptContext::PromptContext(model~ : @deepseek.Model, purpose? : PromptPurpose) -> Self
-
-pub(all) enum PromptPurpose {
-  Coding
-  Review
-} derive(Eq, @debug.Debug)
 
 // Type aliases
 
