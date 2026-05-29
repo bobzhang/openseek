@@ -61,9 +61,8 @@ options(
 - Use `moon run -e` for quick core-language probes. Do not use `moon run -c`;
   `-c` is easy to confuse with `-C`.
 - One-off `moon run -e` or `moon run -` snippets do not see project `moon.pkg`
-  imports. For package APIs like `@fs` or `@stdio`, create or edit a real
-  package and run `moon_check`, or query `moon_ide doc` from a package that
-  imports the API.
+  imports by default, but `.mbtx` snippets may include an `import` block for
+  quick dependency probes.
 - For multi-line snippets, use `moon_cmd run` with path `"-"` and stdin.
 - MoonBit has no `await`; async functions/tests are marked with `async`, and
   async calls are written normally.
@@ -75,13 +74,25 @@ options(
 ```mbt
 ///|
 test {
-  let result : Result[Int, Error] = try? @string.from_str("42")
-  let value = match result {
-    Ok(v) => v
-    Err(_) => fail("expected Ok")
-  }
-  assert_eq(value, 42)
+  let n : Int = @string.from_str("123")
+  inspect(n, content="123")
 }
+```
+
+Native dependency probe with `moon run -e`:
+
+```sh
+printf 'hello' > /tmp/cat.txt
+moon run --target native -e 'import {
+  "moonbitlang/async@0.19.1",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/stdio",
+}
+
+async fn main {
+  let data = @fs.read_file("/tmp/cat.txt")
+  @stdio.stdout.write(data)
+}'
 ```
 
 ## Checked Error Handling
@@ -90,7 +101,9 @@ test {
 - Declare raising functions with `raise` or a concrete error type.
 - To propagate an error from a raising call, call it normally; do not add
   Swift-style `try`.
-- Use `try? f()` to convert a raising call to `Result[...]` in tests.
+- In success-path tests, call raising functions directly; if they raise, the
+  test fails with the error. Use `try? f()` when asserting an error path or
+  inspecting a `Result[...]`.
 - Use `catch` to handle errors in CLI paths. Avoid `try!` in user-facing CLI
   code because it can print panic/debug stacks.
 - For simple custom failures, `raise Failure::Failure("message")` works with a
@@ -107,9 +120,7 @@ test {
 - `String::split` returns an iterator; use it directly in `for`, or collect if
   you need random access.
 - Prefer typed parsing with `@string.from_str` and an explicit annotation, for
-  example `let n : Int = @string.from_str(text)` inside a raising function or
-  `let result : Result[Int, Error] = try? @string.from_str(text)` in tests. Use
-  `@string.parse_int(text, base=...)` only when a non-default base matters.
+  example `let n : Int = @string.from_str(text)` in normal code or tests.
 - Map lookup `map[key]` can panic if missing. Check `map.contains(key)` first
   when input is user-controlled.
 - JSON constructors are `Json::Null`, `Json::True`, `Json::False`,
@@ -122,8 +133,8 @@ test {
 
 ## CLI Parsing And Native IO
 
-- For CLI parsing, prefer `moonbitlang/core/argparse` and
-  `@argparse.parse(cli_command())`. Do not hand-roll option parsing with
+- For CLI parsing, prefer `moonbitlang/core/argparse` and call
+  `@argparse.parse(...)` on a `Command`. Do not hand-roll option parsing with
   `@env.args()` except for tiny throwaway probes.
 - Convert `@argparse.Matches` into a small config record or local values before
   doing real work; keep validation near that conversion.
@@ -135,19 +146,59 @@ Pattern:
 
 ```mbt
 ///|
+struct Config {
+  input : String
+  stdin : Bool
+}
+
+///|
 async fn main {
-  let config = @argparse.parse(cli_command()) |> config_from_matches
+  let config = @argparse.parse(
+    Command(
+      "count-input",
+      about="Print the length of a file or stdin.",
+      flags=[
+        FlagArg(
+          "stdin",
+          long="stdin",
+          about="Read stdin instead of a file.",
+        ),
+      ],
+      positionals=[
+        PositionArg(
+          "input",
+          default_values=["-"],
+          about="Input file path.",
+        ),
+      ],
+    ),
+  ) |> config_from_matches
   let input = if config.stdin {
     @stdio.stdin.read_all().text()
   } else {
-    @fs.read_file(config.input).text() catch {
-      e => {
-        println("Error: " + e.to_string())
-        return
-      }
-    }
+    @fs.read_file(config.input).text()
   }
   println(input.length())
+}
+
+///|
+fn config_from_matches(matches : @argparse.Matches) -> Config raise {
+  match matches {
+    {
+      values: { "input"?: Some([input, ..]), .. },
+      flags: { "stdin"?: Some(stdin), .. },
+      ..
+    } => { input, stdin }
+    {
+      values: { "input"?: Some([input, ..]), .. },
+      flags: { "stdin"?: None, .. },
+      ..
+    } => {
+      let stdin = false
+      { input, stdin }
+    }
+    _ => fail("missing parsed argument: input")
+  }
 }
 ```
 
