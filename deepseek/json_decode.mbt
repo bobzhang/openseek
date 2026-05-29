@@ -44,12 +44,12 @@ fn[T] json_decode_error(
 }
 
 ///|
-impl FromJson for Usage with from_json(json : Json, _path : @json.JsonPath) -> Usage {
+impl FromJson for Usage with fn from_json(json : Json, _path : @json.JsonPath) -> Usage {
   Usage::from_json(json)
 }
 
 ///|
-impl FromJson for ToolCall with from_json(json : Json, path : @json.JsonPath) -> ToolCall {
+impl FromJson for ToolCall with fn from_json(json : Json, path : @json.JsonPath) -> ToolCall {
   match json {
     {
       "id": String(id),
@@ -102,7 +102,7 @@ impl FromJson for ToolCall with from_json(json : Json, path : @json.JsonPath) ->
 /// Decodes a DeepSeek chat completions JSON response envelope.
 ///
 /// Missing usage information is represented as zero token counts.
-pub impl FromJson for ChatResponse with from_json(
+pub impl FromJson for ChatResponse with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> ChatResponse {
