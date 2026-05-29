@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/tui/internal/viewport"
+
+import {
+  "moonbit-community/tty",
+  "moonbit-community/tty/color",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type Cursor
+pub fn Cursor::col(Self) -> Int
+pub fn Cursor::new(row~ : Int, col~ : Int) -> Self
+pub fn Cursor::row(Self) -> Int
+
+type Line
+pub fn Line::new(Array[Span]) -> Self
+pub fn Line::text(Self) -> String
+
+type Span
+pub fn Span::new(String, style? : Style) -> Self
+
+type Style derive(Eq)
+pub fn Style::default() -> Self
+pub fn Style::new(foreground? : @color.Color, background? : @color.Color, underline? : Bool) -> Self
+
+type Surface
+pub fn Surface::cursor(Self) -> Cursor
+pub fn Surface::height(Self) -> Int
+pub fn Surface::line_at(Self, Int) -> Line
+pub fn Surface::new(width~ : Int, rows~ : Array[Line], cursor~ : Cursor) -> Self
+
+type Viewport
+pub fn Viewport::cols(Self) -> Int
+pub async fn Viewport::draw(Self, @tty.Tty, Surface, timeout_ms~ : Int) -> Unit
+pub async fn Viewport::insert_before(Self, @tty.Tty, Array[Line]) -> Unit
+pub async fn Viewport::leave(Self, @tty.Tty) -> Unit
+pub fn Viewport::new(height~ : Int) -> Self
+pub fn Viewport::refresh_size(Self, @tty.Tty) -> Unit
+pub async fn Viewport::replay_with_rows_before(Self, @tty.Tty, Array[Line], Surface) -> Unit
+
+// Type aliases
+
+// Traits

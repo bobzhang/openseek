@@ -1,0 +1,121 @@
+///|
+test "normalize_terminal_size falls back to defaults for unknown dimensions" {
+  let normalized = normalize_terminal_size({ rows: 0, cols: -3 })
+  inspect(normalized.rows, content="24")
+  inspect(normalized.cols, content="80")
+  let kept = normalize_terminal_size({ rows: 30, cols: 100 })
+  inspect(kept.rows, content="30")
+  inspect(kept.cols, content="100")
+}
+
+///|
+test "normalized_height clamps into 1..=rows" {
+  let size = { rows: 10, cols: 80 }
+  inspect(normalized_height(size, 0), content="1")
+  inspect(normalized_height(size, 4), content="4")
+  inspect(normalized_height(size, 99), content="10")
+}
+
+///|
+test "max_top_for leaves room for height and floors at row 1" {
+  let size = { rows: 10, cols: 80 }
+  inspect(max_top_for(size, 4), content="7")
+  inspect(max_top_for(size, 10), content="1")
+  // Live area taller than the screen still starts at row 1.
+  inspect(max_top_for(size, 20), content="1")
+}
+
+///|
+test "normalized_top clamps into 1..=max_top_for" {
+  let size = { rows: 10, cols: 80 }
+  inspect(normalized_top(size, 4, 0), content="1")
+  inspect(normalized_top(size, 4, 5), content="5")
+  inspect(normalized_top(size, 4, 99), content="7")
+}
+
+///|
+test "bottom_of is zero before the live area is drawn" {
+  inspect(bottom_of(top=0, height=0), content="0")
+  inspect(bottom_of(top=6, height=0), content="0")
+  inspect(bottom_of(top=6, height=3), content="8")
+}
+
+///|
+fn span_str(span : (Int, Int)) -> String {
+  "\{span.0}..\{span.1}"
+}
+
+///|
+test "redraw_span unions the old and new live-area footprints" {
+  // Same placement: repaint just that region.
+  inspect(
+    span_str(
+      redraw_span(
+        old_top=8,
+        old_height=3,
+        new_top=8,
+        new_height=3,
+        screen_rows=12,
+        old_content_unknown=false,
+      ),
+    ),
+    content="8..10",
+  )
+  // Shrinking: still cover the row the live area vacated at the bottom.
+  inspect(
+    span_str(
+      redraw_span(
+        old_top=8,
+        old_height=3,
+        new_top=8,
+        new_height=2,
+        screen_rows=12,
+        old_content_unknown=false,
+      ),
+    ),
+    content="8..10",
+  )
+  // Live area moved down (e.g. after insert): repaint from the old top so the
+  // rows it left behind are cleared.
+  inspect(
+    span_str(
+      redraw_span(
+        old_top=6,
+        old_height=3,
+        new_top=8,
+        new_height=3,
+        screen_rows=12,
+        old_content_unknown=false,
+      ),
+    ),
+    content="6..10",
+  )
+  // First placement (no old region): repaint just the new area.
+  inspect(
+    span_str(
+      redraw_span(
+        old_top=0,
+        old_height=0,
+        new_top=3,
+        new_height=4,
+        screen_rows=12,
+        old_content_unknown=false,
+      ),
+    ),
+    content="3..6",
+  )
+  // Dropped old content: extend to the screen bottom to clear stale rows.
+  inspect(
+    span_str(
+      redraw_span(
+        old_top=8,
+        old_height=3,
+        new_top=2,
+        new_height=4,
+        screen_rows=12,
+        old_content_unknown=true,
+      ),
+    ),
+    content="2..12",
+  )
+}

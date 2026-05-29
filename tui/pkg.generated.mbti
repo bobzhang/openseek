@@ -1,0 +1,86 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/tui"
+
+import {
+  "moonbit-community/tty/color",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub async fn[T] with_ui(config? : Config, async (Ui) -> T) -> T
+
+// Errors
+
+// Types and methods
+type Config
+pub fn Config::new(esc_timeout_ms? : Int, composer_max_rows? : Int) -> Self
+
+pub struct Doc {
+  // private fields
+}
+pub fn Doc::Doc(Array[Text]) -> Self
+pub fn Doc::plain(String) -> Self
+
+pub(all) enum Event {
+  Queue(Input)
+  Steer(Input)
+  Interrupt
+  Quit
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Input {
+  Prompt(String)
+  Command(String)
+} derive(Eq, @debug.Debug)
+
+pub struct Span {
+  // private fields
+}
+pub fn Span::Span(String, style? : Style) -> Self
+pub fn Span::plain(String) -> Self
+
+type Style derive(Eq)
+pub fn Style::default() -> Self
+pub fn Style::dim() -> Self
+pub fn Style::new(foreground? : @color.Color, background? : @color.Color, underline? : Bool) -> Self
+pub fn Style::prompt() -> Self
+
+pub struct Text {
+  // private fields
+}
+pub fn Text::Text(Array[Span]) -> Self
+pub fn Text::plain(String) -> Self
+
+pub struct ToolCall {
+  title : Text
+  status : ToolStatus?
+  details : Array[Text]
+}
+pub fn ToolCall::ToolCall(Text, status? : ToolStatus, details? : Array[Text]) -> Self
+
+pub(all) enum ToolStatus {
+  InProgress
+  Completed
+  Failed
+  Declined
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TranscriptItem {
+  Input(Input)
+  Response(String)
+  Reasoning(String)
+  ToolCall(ToolCall)
+  Error(String)
+}
+
+type Ui
+pub async fn Ui::append_item(Self, TranscriptItem) -> Unit
+pub async fn Ui::append_transcript(Self, Doc) -> Unit
+pub async fn Ui::read_event(Self) -> Event
+pub async fn Ui::set_activity(Self, Text?) -> Unit
+pub async fn Ui::set_queued_inputs(Self, Array[Input]) -> Unit
+pub async fn Ui::set_status(Self, Text) -> Unit
+
+// Type aliases
+
+// Traits

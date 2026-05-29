@@ -1,0 +1,8 @@
+import {
+  "kawaz/grapheme",
+  "rami3l/unicodewidth",
+  "bobzhang/openseek/tui/internal/clamp",
+  "bobzhang/openseek/tui/internal/text",
+}
+
+supported_targets = "native"

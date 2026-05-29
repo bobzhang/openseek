@@ -1,0 +1,16 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/io" @async/io,
+  "moonbitlang/async/aqueue",
+  "kawaz/grapheme",
+  "rami3l/unicodewidth",
+  "bobzhang/openseek/tui/internal/composer",
+  "bobzhang/openseek/tui/internal/text",
+  "bobzhang/openseek/tui/internal/task",
+  "bobzhang/openseek/tui/internal/viewport",
+  "moonbit-community/tty",
+  "moonbit-community/tty/color" @tty/color,
+  "moonbit-community/tty/input" @tty/input,
+}
+
+supported_targets = "native"

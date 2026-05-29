@@ -1,0 +1,17 @@
+import {
+  "bobzhang/openseek/agent",
+  "bobzhang/openseek/deepseek",
+  "bobzhang/openseek/tui" @ui,
+  "moonbitlang/async",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+}
+
+warnings = "+unnecessary_annotation"
+
+supported_targets = "+native"
+
+options(
+  "is-main": true,
+)
