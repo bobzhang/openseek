@@ -33,8 +33,9 @@ fn flash_prompt() -> String {
     #|- Do not import `moonbitlang/core` as a package. Prelude types such as `Array`,
     #|  `Map`, `Json`, `StringBuilder`, `Result`, `Ok`, and `Err` are already
     #|  available. Import specific core subpackages only when needed, for example
-    #|  `moonbitlang/core/string` for `@string.parse_int` or `moonbitlang/core/json`
-    #|  for `@json.parse`.
+    #|  `moonbitlang/core/string` for typed `@string.from_str` parsing,
+    #|  `moonbitlang/core/argparse` for CLI parsing, or `moonbitlang/core/json` for
+    #|  `@json.parse`.
     #|- Top-level MoonBit items are separated by `///|`.
     #|
     #|Example module:
@@ -59,7 +60,7 @@ fn flash_prompt() -> String {
     #|  "moonbitlang/async",
     #|  "moonbitlang/async/fs",
     #|  "moonbitlang/async/stdio",
-    #|  "moonbitlang/core/env",
+    #|  "moonbitlang/core/argparse",
     #|}
     #|
     #|supported_targets = "+native"
@@ -89,7 +90,7 @@ fn flash_prompt() -> String {
     #|```mbt
     #|///|
     #|test {
-    #|  let result : Result[Int, Error] = try? @string.parse_int("42")
+    #|  let result : Result[Int, Error] = try? @string.from_str("42")
     #|  let value = match result {
     #|    Ok(v) => v
     #|    Err(_) => fail("expected Ok")
@@ -120,6 +121,10 @@ fn flash_prompt() -> String {
     #|- Use named `StringView` slicing arguments: `s.sub(start=0, end=i).to_owned()`.
     #|- `String::split` returns an iterator. Use it directly in `for`, or collect
     #|  with `.to_array()` if you need length or random access.
+    #|- Prefer typed parsing with `@string.from_str` and an explicit annotation, for
+    #|  example `let n : Int = @string.from_str(text)` inside a raising function or
+    #|  `let result : Result[Int, Error] = try? @string.from_str(text)` in tests. Use
+    #|  `@string.parse_int(text, base=...)` only when a non-default base matters.
     #|- Map lookup `map[key]` can panic if missing. Check `map.contains(key)` first
     #|  when input is user-controlled.
     #|- JSON constructors are `Json::Null`, `Json::True`, `Json::False`,
@@ -131,8 +136,13 @@ fn flash_prompt() -> String {
     #|- In black-box tests for a library returning `Json`, match `Json::Object(...)`,
     #|  not `@library.Json::Object(...)`.
     #|
-    #|## Native CLI IO
+    #|## CLI Parsing And Native IO
     #|
+    #|- For CLI parsing, prefer `moonbitlang/core/argparse` and
+    #|  `@argparse.parse(cli_command())`. Do not hand-roll option parsing with
+    #|  `@env.args()` except for tiny throwaway probes.
+    #|- Convert `@argparse.Matches` into a small config record or local values before
+    #|  doing real work; keep validation near that conversion.
     #|- Do not implement ordinary file/stdin IO with C FFI. Use `moonbitlang/async/fs`
     #|  and `moonbitlang/async/stdio`.
     #|- A native CLI that reads either a path or stdin usually needs `async fn main`.
@@ -142,16 +152,16 @@ fn flash_prompt() -> String {
     #|```mbt
     #|///|
     #|async fn main {
-    #|  let args = @env.args()
-    #|  let input = if args.length() > 1 && args[1] != "--stdin" {
-    #|    @fs.read_file(args[1]).text() catch {
+    #|  let config = @argparse.parse(cli_command()) |> config_from_matches
+    #|  let input = if config.stdin {
+    #|    @stdio.stdin.read_all().text()
+    #|  } else {
+    #|    @fs.read_file(config.input).text() catch {
     #|      e => {
     #|        println("Error: " + e.to_string())
     #|        return
     #|      }
     #|    }
-    #|  } else {
-    #|    @stdio.stdin.read_all().text()
     #|  }
     #|  println(input.length())
     #|}
