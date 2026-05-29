@@ -43,6 +43,23 @@ test "count_occurrences counts non-overlapping markers" {
 }
 
 ///|
+async test "indexed runner honors concurrency and preserves order" {
+  let mut active = 0
+  let mut max_active = 0
+  let results = run_indexed_with_concurrency(5, 2, index => {
+    active += 1
+    if active > max_active {
+      max_active = active
+    }
+    @async.sleep(20)
+    active -= 1
+    index
+  })
+  json_inspect(results, content=[0, 1, 2, 3, 4])
+  assert_eq(max_active, 2)
+}
+
+///|
 test "log monitor counts prompt-sensitive moon commands" {
   let log_text =
     #|tool: cwd=.
@@ -78,6 +95,7 @@ test "markdown report summarizes threshold" {
     model: "deepseek-v4-flash",
     prompt_label: "builtin",
     runs: 1,
+    concurrency: 1,
     min_successes: 1,
     successes: 1,
     out_dir: "out",

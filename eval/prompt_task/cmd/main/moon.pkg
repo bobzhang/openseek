@@ -1,0 +1,15 @@
+import {
+  "bobzhang/openseek/deepseek",
+  "bobzhang/openseek/eval/prompt_task/harness",
+  "moonbitlang/async",
+  "moonbitlang/core/argparse",
+  "moonbitlang/core/string",
+}
+
+warnings = "+unnecessary_annotation"
+
+supported_targets = "+native"
+
+options(
+  "is-main": true,
+)

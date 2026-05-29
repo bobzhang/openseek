@@ -19,6 +19,7 @@ fn config_from_matches(matches : @argparse.Matches) -> @harness.Config raise {
     out_dir=value(matches, "out"),
     repo_root=value(matches, "repo-root"),
     prompt_label=value(matches, "prompt-label"),
+    task_file=value(matches, "task-file"),
     system_prompt_file=value(matches, "system-prompt-file"),
     system_prompt_addendum_file=value(matches, "system-prompt-addendum-file"),
   )

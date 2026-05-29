@@ -11,6 +11,8 @@ eval/*
 !eval/prompt_tasks/**
 !eval/prompt_reports/
 !eval/prompt_reports/**
+!eval/prompt_task/
+!eval/prompt_task/**
 !eval/file_edit/
 !eval/file_edit/**
 !eval/report/

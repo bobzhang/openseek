@@ -10,11 +10,14 @@ The checked-in eval support packages are:
   built-in tool through `agent_tool.execute_tool_call`.
 - `eval/file_edit`: nondeterministic model-facing file-edit harness that runs
   the real agent against isolated fixtures.
+- `eval/prompt_task`: nondeterministic model-facing prompt-task harness that
+  runs repeated MoonBit prompt tasks concurrently and validates the final
+  generated workspace independently.
 
 Run deterministic harnesses with ordinary tests:
 
 ```bash
-moon test eval/report eval/tool_harness eval/file_edit/harness
+moon test eval/report eval/tool_harness eval/file_edit/harness eval/prompt_task/harness
 ```
 
 The design borrows the useful parts of SWE-AGI: each task should be a cold-start
@@ -79,6 +82,20 @@ Run each prompt variant with `deepseek-v4-flash` first. Keep the task statement,
 workspace scaffold, visible tests, max steps, and model fixed. Run at least
 three repetitions per variant before promoting a prompt change; use five when a
 task is noisy.
+
+The checked-in prompt-task runner supports five concurrent repeats:
+
+```bash
+moon run eval/prompt_task/cmd/main -- \
+  --api-key "$DEEPSEEK" \
+  --model deepseek-v4-flash \
+  --runs 5 \
+  --concurrency 5 \
+  --min-successes 5 \
+  --max-steps 160 \
+  --prompt-label flash-current \
+  --out .moonagent/eval_runs/toml_flash_current_5x
+```
 
 Start with these tasks:
 
