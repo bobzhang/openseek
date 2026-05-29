@@ -7,7 +7,7 @@ pub struct MoonCheckInput {
   deny_warn : Bool
   fmt : Bool
   explain : Bool
-}
+} derive(Debug)
 
 ///|
 pub fn decode(arguments : Json) -> MoonCheckInput raise {
@@ -85,83 +85,4 @@ fn validate_target(target : String) -> Unit raise {
   if !allowed.contains(target) {
     fail("arguments.target to be one of wasm, wasm-gc, js, native, llvm, all")
   }
-}
-
-///|
-test "decode direct moon_check arguments" {
-  let input = decode({
-    "cwd": "/tmp",
-    "path": "agent",
-    "paths": ["README.mbt.md"],
-    "target": "native",
-    "warn_list": "+unnecessary_annotation",
-    "deny_warn": true,
-    "fmt": true,
-    "explain": true,
-  })
-  assert_true(input.cwd is Some("/tmp"))
-  assert_eq(input.paths.join("|"), "agent|README.mbt.md")
-  assert_true(input.target is Some("native"))
-  assert_true(input.warn_list is Some("+unnecessary_annotation"))
-  assert_true(input.deny_warn)
-  assert_true(input.fmt)
-  assert_true(input.explain)
-}
-
-///|
-test "decode path and paths together" {
-  let input = decode({
-    "path": "agent",
-    "paths": ["agent_tool/read", "agent_tool/write"],
-  })
-  assert_eq(input.paths.join("|"), "agent|agent_tool/read|agent_tool/write")
-}
-
-///|
-test "decode ignores empty optional strings and false flags" {
-  let input = decode({
-    "cwd": "",
-    "path": "",
-    "paths": ["", null],
-    "deny_warn": false,
-    "fmt": null,
-  })
-  assert_true(input.cwd is None)
-  assert_eq(input.paths.length(), 0)
-  assert_false(input.deny_warn)
-  assert_false(input.fmt)
-  assert_false(input.explain)
-}
-
-///|
-test "decode rejects invalid target" {
-  let _ = decode({ "target": "browser" }) catch {
-    error => {
-      assert_true("\{error}".contains("arguments.target"))
-      return
-    }
-  }
-  fail("invalid target decoded")
-}
-
-///|
-test "decode rejects invalid paths" {
-  let _ = decode({ "paths": [42] }) catch {
-    error => {
-      assert_true("\{error}".contains("arguments.paths"))
-      return
-    }
-  }
-  fail("invalid paths decoded")
-}
-
-///|
-test "decode rejects non-object arguments" {
-  let _ = decode(Json::null()) catch {
-    error => {
-      assert_true("\{error}".contains("object arguments"))
-      return
-    }
-  }
-  fail("non-object decoded")
 }

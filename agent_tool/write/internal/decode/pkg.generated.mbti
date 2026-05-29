@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "bobzhang/openseek/agent_tool/write/internal/decode"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn decode(Json) -> WriteInput raise
 
@@ -10,7 +14,7 @@ pub fn decode(Json) -> WriteInput raise
 pub struct WriteInput {
   path : String
   content : String
-}
+} derive(@debug.Debug)
 
 // Type aliases
 

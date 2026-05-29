@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "bobzhang/openseek/agent_tool/moon_cmd/internal/decode"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn decode(Json) -> MoonCommandInput raise
 
@@ -22,7 +26,7 @@ pub struct MoonCommandInput {
   test_update_kind : String?
   test_update_reason : String?
   max_output_chars : Int
-}
+} derive(@debug.Debug)
 
 // Type aliases
 

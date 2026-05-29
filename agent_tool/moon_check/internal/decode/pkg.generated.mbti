@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "bobzhang/openseek/agent_tool/moon_check/internal/decode"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn decode(Json) -> MoonCheckInput raise
 
@@ -15,7 +19,7 @@ pub struct MoonCheckInput {
   deny_warn : Bool
   fmt : Bool
   explain : Bool
-}
+} derive(@debug.Debug)
 
 // Type aliases
 

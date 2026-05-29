@@ -9,7 +9,7 @@ pub struct ShellInput {
   cmd : String
   cwd : String?
   max_output_chars : Int
-}
+} derive(Debug)
 
 ///|
 pub fn decode(arguments : Json) -> ShellInput raise {
@@ -73,59 +73,4 @@ fn cap_max_output_chars(value : Int) -> Int {
   } else {
     value
   }
-}
-
-///|
-test "decode valid shell input" {
-  let input = decode({
-    "cmd": "echo hello",
-    "cwd": "/tmp",
-    "max_output_chars": 999999,
-  })
-  assert_eq(input.cmd, "echo hello")
-  assert_true(input.cwd is Some("/tmp"))
-  assert_eq(input.max_output_chars, hard_max_output_chars)
-}
-
-///|
-test "decode treats empty cwd as absent" {
-  let input = decode({ "cmd": "pwd", "cwd": "" })
-  assert_true(input.cwd is None)
-}
-
-///|
-test "decode rejects missing command" {
-  let _ = decode({ "cwd": "/tmp" }) catch {
-    error => {
-      assert_true("\{error}".contains("arguments.cmd"))
-      return
-    }
-  }
-  fail("missing command decoded")
-}
-
-///|
-test "decode rejects invalid output cap" {
-  let _ = decode({ "cmd": "echo hello", "max_output_chars": 0 }) catch {
-    error => {
-      assert_true(
-        "\{error}".contains(
-          "arguments.max_output_chars to be a positive number",
-        ),
-      )
-      return
-    }
-  }
-  fail("invalid output cap decoded")
-}
-
-///|
-test "decode rejects non-object arguments" {
-  let _ = decode(Json::null()) catch {
-    error => {
-      assert_true("\{error}".contains("object arguments"))
-      return
-    }
-  }
-  fail("non-object decoded")
 }

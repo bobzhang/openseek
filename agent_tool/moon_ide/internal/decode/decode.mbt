@@ -14,7 +14,7 @@ pub struct MoonIdeInput {
   target : String?
   no_check : Bool
   max_output_chars : Int
-}
+} derive(Debug)
 
 ///|
 pub fn decode(arguments : Json) -> MoonIdeInput raise {
@@ -160,87 +160,4 @@ fn validate_required_fields(
       }
     _ => ()
   }
-}
-
-///|
-test "decode doc action arguments" {
-  let input = decode({
-    "action": "doc",
-    "cwd": "/tmp",
-    "query": "String::replace_all",
-    "no_check": true,
-  })
-  assert_eq(input.action, "doc")
-  assert_true(input.cwd is Some("/tmp"))
-  assert_true(input.query is Some("String::replace_all"))
-  assert_true(input.no_check)
-  assert_eq(input.max_output_chars, default_max_output_chars)
-}
-
-///|
-test "decode loc-aware navigation arguments" {
-  let input = decode({
-    "action": "peek_def",
-    "query": "render",
-    "loc": "lib.mbt:14:8",
-    "target": "native",
-  })
-  assert_eq(input.action, "peek_def")
-  assert_true(input.loc is Some("lib.mbt:14:8"))
-  assert_true(input.target is Some("native"))
-}
-
-///|
-test "decode outline path" {
-  let input = decode({
-    "action": "outline",
-    "path": "agent_tool/moon_ide",
-    "max_output_chars": 42,
-  })
-  assert_eq(input.action, "outline")
-  assert_true(input.path is Some("agent_tool/moon_ide"))
-  assert_eq(input.max_output_chars, 42)
-}
-
-///|
-test "decode caps oversized output limit" {
-  let input = decode({
-    "action": "doc",
-    "query": "String",
-    "max_output_chars": 999999,
-  })
-  assert_eq(input.max_output_chars, hard_max_output_chars)
-}
-
-///|
-test "decode rejects invalid action" {
-  let _ = decode({ "action": "rename", "query": "old_name" }) catch {
-    error => {
-      assert_true("\{error}".contains("arguments.action"))
-      return
-    }
-  }
-  fail("invalid action decoded")
-}
-
-///|
-test "decode rejects missing required fields" {
-  let _ = decode({ "action": "hover", "query": "Widget" }) catch {
-    error => {
-      assert_true("\{error}".contains("arguments.loc"))
-      return
-    }
-  }
-  fail("hover without loc decoded")
-}
-
-///|
-test "decode rejects non-object arguments" {
-  let _ = decode(Json::null()) catch {
-    error => {
-      assert_true("\{error}".contains("object arguments"))
-      return
-    }
-  }
-  fail("non-object decoded")
 }

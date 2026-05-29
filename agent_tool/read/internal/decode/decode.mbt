@@ -10,7 +10,7 @@ pub struct ReadInput {
   start_line : Int
   max_lines : Int?
   max_output_chars : Int
-}
+} derive(Debug)
 
 ///|
 pub fn decode(arguments : Json) -> ReadInput raise {
@@ -89,62 +89,4 @@ fn cap_max_output_chars(value : Int) -> Int {
   } else {
     value
   }
-}
-
-///|
-test "decode valid read input" {
-  let input = decode({
-    "path": "file.mbt",
-    "start_line": 3,
-    "max_lines": 4,
-    "max_output_chars": 999999,
-  })
-  assert_eq(input.path, "file.mbt")
-  assert_eq(input.start_line, 3)
-  guard input.max_lines is Some(max_lines) else { fail("missing max_lines") }
-  assert_eq(max_lines, 4)
-  assert_eq(input.max_output_chars, hard_max_output_chars)
-}
-
-///|
-test "decode defaults optional limits" {
-  let input = decode({ "path": "file.mbt" })
-  assert_eq(input.start_line, 1)
-  assert_true(input.max_lines is None)
-  assert_eq(input.max_output_chars, default_max_output_chars)
-}
-
-///|
-test "decode rejects missing path" {
-  let _ = decode({}) catch {
-    error => {
-      assert_true("\{error}".contains("arguments.path"))
-      return
-    }
-  }
-  fail("missing path decoded")
-}
-
-///|
-test "decode rejects invalid limits" {
-  let _ = decode({ "path": "file.mbt", "max_lines": 0 }) catch {
-    error => {
-      assert_true(
-        "\{error}".contains("arguments.max_lines to be a positive number"),
-      )
-      return
-    }
-  }
-  fail("invalid max_lines decoded")
-}
-
-///|
-test "decode rejects non-object arguments" {
-  let _ = decode(Json::null()) catch {
-    error => {
-      assert_true("\{error}".contains("object arguments"))
-      return
-    }
-  }
-  fail("non-object decoded")
 }
