@@ -39,6 +39,11 @@ test "flash prompt includes flash addenda" {
   assert_true(prompt.contains("@stdio.stdout.write(data)"))
   assert_true(prompt.contains("Current MoonBit modules use `moon.mod`"))
   assert_true(prompt.contains("moon.mod.json` is legacy"))
+  assert_true(
+    prompt.contains("Import local packages by their full package path"),
+  )
+  assert_true(prompt.contains("\"user/toml/lib\""))
+  assert_true(prompt.contains("@lib.parse(...)"))
   assert_true(prompt.contains("Do not import `moonbitlang/core`"))
   assert_true(prompt.contains("moonbitlang/core/argparse"))
   assert_true(prompt.contains("@argparse.parse("))
@@ -55,12 +60,44 @@ test "flash prompt includes flash addenda" {
   assert_false(prompt.contains("fn value(matches : @argparse.Matches"))
   assert_false(prompt.contains("fn flag(matches : @argparse.Matches"))
   assert_true(prompt.contains("@string.from_str"))
+  assert_true(prompt.contains("not write `@string.from_str[:Int](text)`"))
   assert_true(prompt.contains("inspect(n, content=\"123\")"))
+  assert_true(prompt.contains("In tests, call raising functions directly"))
+  assert_true(prompt.contains("the test fails with\n  the error"))
   assert_true(
-    prompt.contains("In success-path tests, call raising functions directly"),
+    prompt.contains("already returns an explicit success/failure value"),
   )
+  assert_true(prompt.contains("Use checked errors for ordinary parser"))
+  assert_true(prompt.contains("Think of `raise` as a checked effect"))
+  assert_true(
+    prompt.contains("Let errors travel through internal parser layers"),
+  )
+  assert_true(prompt.contains("suberror ParseError"))
+  assert_true(prompt.contains("fn main raise"))
+  assert_true(prompt.contains("async fn main` already can raise"))
+  assert_true(prompt.contains("do not write `async fn main raise`"))
+  assert_true(prompt.contains("For custom errors, use `suberror`"))
+  assert_true(
+    prompt.contains("already returns an explicit success/failure value"),
+  )
+  assert_false(prompt.contains("prefer `Result[T, String]`"))
+  assert_false(
+    prompt.contains("Prefer checked errors over `Result[T, String]`"),
+  )
+  assert_false(prompt.contains("When an API returns `Result[...]`"))
+  assert_false(prompt.contains("errors prefer `Err(\"message\")`"))
+  assert_false(prompt.contains("let result : Result[Int, Error]"))
+  assert_false(prompt.contains("try?"))
+  assert_false(prompt.contains("try!"))
+  assert_false(prompt.contains("raise Failure::Failure"))
   assert_false(prompt.contains("@string.parse_int"))
+  assert_true(
+    prompt.contains("Json::number(n.to_double(), repr=text.to_owned())"),
+  )
+  assert_true(prompt.contains("json.stringify()"))
   assert_true(prompt.contains("moonbitlang/async/fs"))
+  assert_true(prompt.contains("FlagArg.long` omits leading dashes"))
+  assert_true(prompt.contains("not\n  `long=\"--stdin\"`"))
   assert_true(prompt.contains("@stdio.stdin.read_all().text()"))
   assert_true(prompt.contains("@fs.read_file(config.input).text()"))
   assert_true(prompt.contains("Json::object(map)"))

@@ -24,6 +24,10 @@ work is needed, call a tool. When the task is complete, call `finish`.
   an unrelated parent module.
 - Packages are directories with `moon.pkg`. Files inside one package share a
   flat namespace; file names do not create modules.
+- Import local packages by their full package path from `moon.mod` plus the
+  package directory. For module `name = "user/toml"` and package `lib/moon.pkg`,
+  import `"user/toml/lib"` and call it as `@lib.parse(...)`; import
+  `"user/toml/src"` and call `@src.name(...)` for a `src` package.
 - Configure imports in `moon.pkg`, not in `.mbt` files. Use `@alias.name` in
   code to call imported package APIs.
 - Do not import `moonbitlang/core` as a package. Prelude types such as `Array`,
@@ -110,15 +114,56 @@ async fn main {
 
 - MoonBit uses checked raising functions.
 - Declare raising functions with `raise` or a concrete error type.
-- To propagate an error from a raising call, call it normally; do not add
-  Swift-style `try`.
-- In success-path tests, call raising functions directly; if they raise, the
-  test fails with the error. Use `try? f()` when asserting an error path or
-  inspecting a `Result[...]`.
-- Use `catch` to handle errors in CLI paths. Avoid `try!` in user-facing CLI
-  code because it can print panic/debug stacks.
-- For simple custom failures, `raise Failure::Failure("message")` works with a
-  function declared `raise Error` or `raise`.
+- Use checked errors for ordinary parser and CLI control flow. Keep the normal
+  return type as the successful value, for example `Json raise`, not a wrapper
+  around both success and failure.
+- Think of `raise` as a checked effect on the function, not as a value returned
+  by the function. A raising helper can call other raising helpers normally, and
+  its caller can do the same if the caller is also marked `raise`.
+- Let errors travel through internal parser layers. Handle them only at a real
+  boundary, such as a CLI path that needs custom stderr text.
+- For custom errors, use `suberror`, not `type Error`, `trait Error`, or
+  `type TomlError`.
+- To propagate an error from a raising call, call it normally from a function
+  marked with `raise`.
+- In tests, call raising functions directly; if they raise, the test fails with
+  the error and the message is usually enough.
+- When an API already returns an explicit success/failure value, match that
+  value directly.
+- If `fn main` calls a raising function, write `fn main raise { ... }`.
+- `async fn main` already can raise; do not write `async fn main raise`.
+- Use `catch` only when you need custom user-facing error text. Avoid abort
+  helpers in user-facing CLI code because they can print panic/debug stacks.
+- For one-off internal failures use `fail("message")`; for clean user-facing
+  parser errors, use a small `suberror`.
+
+Checked-error pattern:
+
+```mbt
+///|
+suberror ParseError {
+  InvalidInput(String)
+} derive(Debug)
+
+///|
+fn parse_count(text : String) -> Int raise {
+  if text.trim().is_empty() {
+    raise ParseError::InvalidInput("empty input")
+  }
+  let n : Int = @string.from_str(text)
+  n
+}
+
+///|
+fn main raise {
+  println(parse_count("123"))
+}
+
+///|
+test {
+  inspect(parse_count("123"), content="123")
+}
+```
 
 ## Strings, Maps, JSON, And Tests
 
@@ -131,7 +176,8 @@ async fn main {
 - `String::split` returns an iterator. Use it directly in `for`, or collect
   with `.to_array()` if you need length or random access.
 - Prefer typed parsing with `@string.from_str` and an explicit annotation, for
-  example `let n : Int = @string.from_str(text)` in normal code or tests.
+  example `let n : Int = @string.from_str(text)` in normal code or tests. Do
+  not write `@string.from_str[:Int](text)` or `@string.from_str[Int](text)`.
 - Map lookup `map[key]` can panic if missing. Check `map.contains(key)` first
   when input is user-controlled.
 - JSON constructors are `Json::Null`, `Json::True`, `Json::False`,
@@ -140,6 +186,10 @@ async fn main {
 - Prefer JSON builder helpers for creating values: `Json::object(map)`,
   `Json::array(arr)`, `Json::string(s)`, `Json::number(n)`, and
   `Json::boolean(b)`.
+- For integer JSON numbers, use `Json::number(n.to_double(), repr=text.to_owned())`
+  when you need output to preserve integer spelling.
+- For JSON CLI stdout and tests, use `json.stringify()` or inspect
+  `json.stringify()`; do not rely on `println(json)` or Debug/Show snapshots.
 - In black-box tests for a library returning `Json`, match `Json::Object(...)`,
   not `@library.Json::Object(...)`.
 
@@ -148,6 +198,8 @@ async fn main {
 - For CLI parsing, prefer `moonbitlang/core/argparse` and call
   `@argparse.parse(...)` on a `Command`. Do not hand-roll option parsing with
   `@env.args()` except for tiny throwaway probes.
+- `FlagArg.long` omits leading dashes: use `long="stdin"`, not
+  `long="--stdin"`.
 - Convert `@argparse.Matches` into a small config record or local values before
   doing real work; keep validation near that conversion.
 - Do not implement ordinary file/stdin IO with C FFI. Use `moonbitlang/async/fs`
