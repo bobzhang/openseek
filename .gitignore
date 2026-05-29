@@ -7,6 +7,10 @@ eval/*
 !eval/README.md
 !eval/prompts/
 !eval/prompts/**
+!eval/prompt_tasks/
+!eval/prompt_tasks/**
+!eval/prompt_reports/
+!eval/prompt_reports/**
 !eval/file_edit/
 !eval/file_edit/**
 !eval/report/
