@@ -613,4 +613,5 @@ fn stable_moon_cmd_output(
   .replace_all(old=canonical, new="<fixture>")
   .replace_all(old=project, new="<fixture>")
   .replace_all(old="Using cached moonbitlang/async@0.19.1\n", new="")
+  .replace_all(old="Downloading moonbitlang/async@0.19.1\n", new="")
 }
