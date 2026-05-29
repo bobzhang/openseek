@@ -3,7 +3,7 @@
 ///
 /// Assistant messages whose `content` is empty but carry tool calls are
 /// encoded with JSON `content: null`, as the API requires.
-impl ToJson for ChatMessage with to_json(message : ChatMessage) -> Json {
+impl ToJson for ChatMessage with fn to_json(message : ChatMessage) -> Json {
   let content = match message.role {
     Assistant if message.tool_calls.length() > 0 && message.content == "" =>
       Json::null()
@@ -35,7 +35,7 @@ impl ToJson for ChatMessage with to_json(message : ChatMessage) -> Json {
 
 ///|
 /// Encodes a `ToolDefinition` as a DeepSeek `tools[]` entry.
-impl ToJson for ToolDefinition with to_json(tool : ToolDefinition) -> Json {
+impl ToJson for ToolDefinition with fn to_json(tool : ToolDefinition) -> Json {
   let function : Json = if tool.strict {
     {
       "name": tool.name,
@@ -55,7 +55,7 @@ impl ToJson for ToolDefinition with to_json(tool : ToolDefinition) -> Json {
 
 ///|
 /// Encodes a `ToolCall` as the DeepSeek assistant `tool_calls[]` entry.
-impl ToJson for ToolCall with to_json(call : ToolCall) -> Json {
+impl ToJson for ToolCall with fn to_json(call : ToolCall) -> Json {
   {
     "id": call.id,
     "type": "function",
