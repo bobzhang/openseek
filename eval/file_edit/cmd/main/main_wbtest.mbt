@@ -5,11 +5,23 @@ test "cli defaults to flash baseline" {
   assert_eq(config.api_key, "test-key")
   assert_eq(config.model.to_string(), "deepseek-v4-flash")
   assert_eq(config.runs, 10)
+  assert_eq(config.concurrency, 1)
   assert_eq(config.min_successes, 8)
   assert_eq(config.max_steps, 200)
   assert_eq(config.prompt_label, "builtin")
   assert_eq(config.system_prompt_file, "")
   assert_eq(config.system_prompt_addendum_file, "")
+}
+
+///|
+test "cli parses concurrency option" {
+  let matches = cli_command().parse(argv=[
+    "--api-key", "test-key", "--runs", "5", "--min-successes", "5", "--concurrency",
+    "5",
+  ])
+  let config = config_from_matches(matches)
+  assert_eq(config.runs, 5)
+  assert_eq(config.concurrency, 5)
 }
 
 ///|

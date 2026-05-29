@@ -30,6 +30,7 @@ pub struct EvalReport {
   model : String
   prompt_label : String
   runs : Int
+  concurrency : Int
   min_successes : Int
   successes : Int
   out_dir : String
@@ -39,15 +40,14 @@ pub struct EvalReport {
 ///|
 pub async fn run_suite(config : Config) -> EvalReport {
   prepare_output_dir(config.out_dir)
-  let results : Array[TrialResult] = []
-  for index in 0..<config.runs {
-    let result = run_trial(config, index)
-    results.push(result)
-  }
+  let results = run_indexed_with_concurrency(config.runs, config.concurrency, index => {
+    run_trial(config, index)
+  })
   let report : EvalReport = {
     model: config.model.to_string(),
     prompt_label: config.prompt_label,
     runs: config.runs,
+    concurrency: config.concurrency,
     min_successes: config.min_successes,
     successes: count_successes(results),
     out_dir: config.out_dir,
@@ -55,6 +55,26 @@ pub async fn run_suite(config : Config) -> EvalReport {
   }
   write_report_files(report)
   report
+}
+
+///|
+async fn[X] run_indexed_with_concurrency(
+  count : Int,
+  concurrency : Int,
+  run : async (Int) -> X,
+) -> Array[X] {
+  let limit = @async.Semaphore(concurrency)
+  @async.all(
+    [
+      for index in 0..<count => {
+        () => {
+          limit.acquire()
+          defer limit.release()
+          run(index)
+        }
+      }
+    ],
+  )
 }
 
 ///|

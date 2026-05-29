@@ -11,8 +11,8 @@ async fn main {
 ///|
 fn cli_command() -> @argparse.Command {
   Command(
-    "file-edit-eval",
-    about="Run statistical file-editing evals against the OpenSeek agent.",
+    "prompt-task-eval",
+    about="Run repeated prompt-task evals against the OpenSeek agent.",
     options=[
       OptionArg(
         "api-key",
@@ -29,31 +29,37 @@ fn cli_command() -> @argparse.Command {
       OptionArg(
         "runs",
         long="runs",
-        default_values=["10"],
-        about="Number of trials. Cases repeat in order.",
+        default_values=["5"],
+        about="Number of independent trials.",
       ),
       OptionArg(
         "concurrency",
         long="concurrency",
-        default_values=["1"],
+        default_values=["5"],
         about="Maximum number of trials to run concurrently.",
       ),
       OptionArg(
         "min-successes",
         long="min-successes",
-        default_values=["8"],
+        default_values=["5"],
         about="Minimum successful trials required.",
       ),
       OptionArg(
         "max-steps",
         long="max-steps",
-        default_values=["200"],
+        default_values=["160"],
         about="Maximum agent steps per trial.",
+      ),
+      OptionArg(
+        "task-file",
+        long="task-file",
+        default_values=["eval/prompt_tasks/toml_parser_cli.md"],
+        about="Task template file. `{{WORKSPACE}}` is replaced per trial.",
       ),
       OptionArg(
         "out",
         long="out",
-        default_values=[".moonagent/eval_runs/file_edit_flash"],
+        default_values=[".moonagent/eval_runs/prompt_task_flash"],
         about="Directory for workspaces, logs, and reports.",
       ),
       OptionArg(

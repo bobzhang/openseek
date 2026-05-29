@@ -9,6 +9,7 @@ pub struct Config {
   out_dir : String
   repo_root : String
   prompt_label : String
+  task_file : String
   system_prompt_file : String
   system_prompt_addendum_file : String
 }
@@ -24,6 +25,7 @@ pub fn Config::Config(
   out_dir~ : String,
   repo_root~ : String,
   prompt_label~ : String,
+  task_file~ : String,
   system_prompt_file~ : String,
   system_prompt_addendum_file~ : String,
 ) -> Config {
@@ -37,6 +39,7 @@ pub fn Config::Config(
     out_dir,
     repo_root,
     prompt_label,
+    task_file,
     system_prompt_file,
     system_prompt_addendum_file,
   }

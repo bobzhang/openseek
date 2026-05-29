@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "bobzhang/openseek/eval/file_edit/harness"
+package "bobzhang/openseek/eval/prompt_task/harness"
 
 import {
   "bobzhang/openseek/deepseek",
@@ -21,14 +21,16 @@ pub struct Config {
   out_dir : String
   repo_root : String
   prompt_label : String
+  task_file : String
   system_prompt_file : String
   system_prompt_addendum_file : String
 }
-pub fn Config::Config(api_key~ : String, model~ : @deepseek.Model, runs~ : Int, concurrency~ : Int, min_successes~ : Int, max_steps~ : Int, out_dir~ : String, repo_root~ : String, prompt_label~ : String, system_prompt_file~ : String, system_prompt_addendum_file~ : String) -> Self
+pub fn Config::Config(api_key~ : String, model~ : @deepseek.Model, runs~ : Int, concurrency~ : Int, min_successes~ : Int, max_steps~ : Int, out_dir~ : String, repo_root~ : String, prompt_label~ : String, task_file~ : String, system_prompt_file~ : String, system_prompt_addendum_file~ : String) -> Self
 
 pub struct EvalReport {
   model : String
   prompt_label : String
+  task_file : String
   runs : Int
   concurrency : Int
   min_successes : Int
@@ -40,9 +42,13 @@ pub fn EvalReport::failure_message(Self) -> String
 pub fn EvalReport::markdown(Self) -> String
 pub fn EvalReport::passed(Self) -> Bool
 
+pub struct ProbeResult {
+  passed : Bool
+  reason : String
+}
+
 pub struct TrialResult {
   index : Int
-  case_id : String
   prompt_label : String
   success : Bool
   reason : String
@@ -51,22 +57,34 @@ pub struct TrialResult {
   exit_code : Int
   steps : Int
   tool_errors : Int
-  shell_uses : Int
-  moon_cmd_uses : Int
-  moon_run_e_mentions : Int
-  moon_run_c_mentions : Int
+  finished : Bool
+  validation : ValidationResult
   moon_check_uses : Int
   moon_test_uses : Int
-  moon_info_uses : Int
-  moon_fmt_uses : Int
-  edit_successes : Int
-  write_successes : Int
-  validation_passed : Bool
-  marker_present : Bool
+  moon_run_e_mentions : Int
+  moon_run_c_mentions : Int
+  bad_run_e_mentions : Int
+  from_str_mentions : Int
+  parse_int_mentions : Int
+  argparse_mentions : Int
+  old_argparse_mentions : Int
+  c_ffi_mentions : Int
+  env_args_mentions : Int
+  result_style_mentions : Int
+  try_mentions : Int
   warnings : String
+}
+
+pub struct ValidationResult {
+  passed : Bool
+  reason : String
+  moon_check : Bool
+  moon_test : Bool
+  file_probe : Bool
+  stdin_probe : Bool
+  duplicate_probe : Bool
 }
 
 // Type aliases
 
 // Traits
-

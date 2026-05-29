@@ -21,6 +21,7 @@ moon run eval/file_edit/cmd/main -- \
   --api-key "$DEEPSEEK" \
   --model deepseek-v4-flash \
   --runs 10 \
+  --concurrency 1 \
   --min-successes 8 \
   --max-steps 200 \
   --out .moonagent/eval_runs/file_edit_flash
@@ -41,6 +42,7 @@ moon run eval/file_edit/cmd/main -- \
   --api-key "$DEEPSEEK" \
   --model deepseek-v4-flash \
   --runs 10 \
+  --concurrency 1 \
   --min-successes 8 \
   --max-steps 200 \
   --prompt-label builtin \
@@ -54,6 +56,7 @@ moon run eval/file_edit/cmd/main -- \
   --api-key "$DEEPSEEK" \
   --model deepseek-v4-flash \
   --runs 10 \
+  --concurrency 1 \
   --min-successes 8 \
   --max-steps 200 \
   --prompt-label moonbit_probe_discipline \
@@ -65,6 +68,21 @@ Compare `report.md`, `report.json`, and the logs in each output directory.
 For this addendum, useful signals are fewer `Run -c` mentions, more successful
 `Run -e` or stdin probes when a case requires MoonBit validation, fewer repeated
 tool errors, and no regression in pass rate or final validation.
+
+To estimate reliability faster, run repeated trials concurrently. For example,
+five Flash repeats with five concurrent agent processes:
+
+```bash
+moon run eval/file_edit/cmd/main -- \
+  --api-key "$DEEPSEEK" \
+  --model deepseek-v4-flash \
+  --runs 5 \
+  --concurrency 5 \
+  --min-successes 5 \
+  --max-steps 200 \
+  --prompt-label builtin \
+  --out .moonagent/eval_runs/file_edit_flash_5x
+```
 
 The eval is intentionally not part of ordinary `moon test`: it calls the real
 DeepSeek API and is nondeterministic. Use it as a manual or scheduled baseline.
