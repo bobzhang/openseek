@@ -67,6 +67,7 @@ test "flash prompt includes flash addenda" {
   assert_true(prompt.contains("In success tests, call raising functions"))
   assert_true(prompt.contains("fails with the error"))
   assert_true(prompt.contains("Use checked errors for ordinary parser"))
+  assert_true(prompt.contains("Declare ordinary failing helpers"))
   assert_true(prompt.contains("Think of `raise` as a checked effect"))
   assert_true(prompt.contains("different from unchecked exceptions"))
   assert_true(prompt.contains("different from ordinary error\n  return values"))
@@ -75,13 +76,20 @@ test "flash prompt includes flash addenda" {
   assert_true(
     prompt.contains("Let errors travel through internal parser layers"),
   )
+  assert_true(prompt.contains("For rare typed-error APIs"))
+  assert_true(prompt.contains("raise ParseError` may only let `ParseError`"))
+  assert_true(prompt.contains("catch that error and translate it"))
   assert_true(prompt.contains("Do not wrap successful\n  parser tests"))
   assert_true(prompt.contains("wrap raising calls in a manual success/failure"))
   assert_true(prompt.contains("prefer a CLI acceptance probe"))
   assert_true(prompt.contains("suberror ParseError"))
+  assert_true(
+    prompt.contains("fn parse_count(text : String) -> Int raise ParseError"),
+  )
   assert_true(prompt.contains("fn main raise"))
-  assert_true(prompt.contains("async fn main` already can raise"))
-  assert_true(prompt.contains("do not write `async fn main raise`"))
+  assert_true(prompt.contains("async fn` can raise by default"))
+  assert_true(prompt.contains("Do not write `async fn main raise`"))
+  assert_true(prompt.contains("async fn helper() -> Unit noraise"))
   assert_true(prompt.contains("do not encode failure as `Json::null`, `()`"))
   assert_true(prompt.contains("For custom errors, use `suberror`"))
   assert_false(
