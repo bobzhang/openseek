@@ -1,3 +1,6 @@
+// The transcript model — committed conversation items — and its projection into
+// renderable `@doc.Doc` blocks.
+
 ///|
 pub(all) enum ToolStatus {
   InProgress
@@ -60,7 +63,7 @@ fn bulleted_lines(
 }
 
 ///|
-fn TranscriptItem::to_doc(self : TranscriptItem) -> @doc.Doc {
+pub impl @doc.ToDoc for TranscriptItem with fn to_doc(self) {
   match self {
     Input(input) => input.to_doc()
     Response(content) =>

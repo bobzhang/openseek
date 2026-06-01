@@ -70,24 +70,21 @@ test "composer surface grows with multiline input up to max rows" {
 }
 
 ///|
-test "composer surface stacks pre-rendered queued rows above the composer" {
-  let queued = [
-    @surface.Line::new([@surface.Span::new("  1. > first")]),
-    @surface.Line::new([@surface.Span::new("  2. $ pwd")]),
-  ]
+test "composer surface renders queued inputs above composer" {
   let surface = composer_surface(
     @composer.Model::new(),
     None,
-    queued,
+    [@core.Prompt("first"), @core.Command("pwd")],
     @doc.Text::plain("ready"),
     None,
     cols=40,
   )
-  inspect(surface.height(), content="6")
-  inspect(surface.line_at(0).text(), content="  1. > first")
-  inspect(surface.line_at(1).text(), content="  2. $ pwd")
-  inspect(@text.display_width(surface.line_at(2).text()), content="40")
-  inspect(surface.cursor().row(), content="3")
+  inspect(surface.height(), content="7")
+  inspect(surface.line_at(0).text(), content="queued follow-up inputs:")
+  inspect(surface.line_at(1).text(), content="  1. > first")
+  inspect(surface.line_at(2).text(), content="  2. $ pwd")
+  inspect(@text.display_width(surface.line_at(3).text()), content="40")
+  inspect(surface.cursor().row(), content="4")
   inspect(surface.cursor().col(), content="2")
 }
 

@@ -6,11 +6,8 @@
 // one surface, and places the cursor on the active input row. It is the view
 // layer for the composer: pure, terminal-agnostic, and performs no IO.
 //
-// Queued inputs arrive as already-rendered `@surface.Line`s rather than as a
-// semantic input type: the queued rendering knows about the prompt/shell input
-// vocabulary, which lives one layer up, so the caller renders those rows and
-// passes them in. Everything else here only needs the editor model and the doc
-// vocabulary.
+// Queued follow-up inputs are rendered into their preview block here (see
+// queued.mbt); the editing model and the doc vocabulary cover the rest.
 
 ///|
 fn separator_line(cols~ : Int) -> @surface.Line {
@@ -57,20 +54,20 @@ fn status_line(
 ///|
 /// Lay the composer area out for `cols` columns.
 ///
-/// `queued_rows` are already-rendered rows for any queued follow-up inputs,
-/// drawn above the composer. `activity` is an optional in-progress block drawn
-/// between them and the composer border. `status`/`notice` form the bottom
-/// status line, with `notice` taking precedence when present.
+/// `queued_inputs` are any queued follow-up inputs, previewed above the
+/// composer. `activity` is an optional in-progress block drawn between them and
+/// the composer border. `status`/`notice` form the bottom status line, with
+/// `notice` taking precedence when present.
 pub fn composer_surface(
   composer : @composer.Model,
   activity : @doc.Text?,
-  queued_rows : Array[@surface.Line],
+  queued_inputs : Array[@core.Input],
   status : @doc.Text,
   notice : @doc.Text?,
   cols~ : Int,
 ) -> @surface.Surface {
   let rows : Array[@surface.Line] = []
-  for row in queued_rows {
+  for row in queued_input_rows(queued_inputs, cols~) {
     rows.push(row)
   }
   if activity is Some(activity) {

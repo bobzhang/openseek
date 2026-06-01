@@ -2,8 +2,8 @@
 package "bobzhang/openseek/tui"
 
 import {
+  "bobzhang/openseek/tui/core",
   "bobzhang/openseek/tui/doc",
-  "moonbitlang/core/debug",
 }
 
 // Values
@@ -15,48 +15,23 @@ pub async fn[T] with_ui(config? : Config, async (Ui) -> T) -> T
 type Config
 pub fn Config::new(esc_timeout_ms? : Int, composer_max_rows? : Int) -> Self
 
-pub(all) enum Event {
-  Queue(Input)
-  Steer(Input)
-  Interrupt
-  Quit
-} derive(Eq, @debug.Debug)
-
-pub(all) enum Input {
-  Prompt(String)
-  Command(String)
-} derive(Eq, @debug.Debug)
-
-pub struct ToolCall {
-  title : @doc.Text
-  status : ToolStatus?
-  details : Array[@doc.Text]
-}
-pub fn ToolCall::ToolCall(@doc.Text, status? : ToolStatus, details? : Array[@doc.Text]) -> Self
-
-pub(all) enum ToolStatus {
-  InProgress
-  Completed
-  Failed
-  Declined
-} derive(Eq, @debug.Debug)
-
-pub(all) enum TranscriptItem {
-  Input(Input)
-  Response(String)
-  Reasoning(String)
-  ToolCall(ToolCall)
-  Error(String)
-}
-
 type Ui
-pub async fn Ui::append_item(Self, TranscriptItem) -> Unit
+pub async fn Ui::append_item(Self, @core.TranscriptItem) -> Unit
 pub async fn Ui::append_transcript(Self, @doc.Doc) -> Unit
-pub async fn Ui::read_event(Self) -> Event
+pub async fn Ui::read_event(Self) -> @core.Event
 pub async fn Ui::set_activity(Self, @doc.Text?) -> Unit
-pub async fn Ui::set_queued_inputs(Self, Array[Input]) -> Unit
+pub async fn Ui::set_queued_inputs(Self, Array[@core.Input]) -> Unit
 pub async fn Ui::set_status(Self, @doc.Text) -> Unit
 
 // Type aliases
+pub using @core {type Event}
+
+pub using @core {type Input}
+
+pub using @core {type ToolCall}
+
+pub using @core {type ToolStatus}
+
+pub using @core {type TranscriptItem}
 
 // Traits

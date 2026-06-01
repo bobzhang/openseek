@@ -1,13 +1,12 @@
 ///|
 fn Ui::composer_surface(self : Ui) -> @surface.Surface {
-  let cols = self.viewport.cols()
   @render.composer_surface(
     self.composer,
     self.activity,
-    render_queued_inputs(self.queued_inputs, cols~),
+    self.queued_inputs,
     self.status,
     self.notice,
-    cols~,
+    cols=self.viewport.cols(),
   )
 }
 
@@ -80,7 +79,7 @@ pub async fn Ui::append_transcript(self : Self, doc : @doc.Doc) -> Unit {
 
 ///|
 pub async fn Ui::append_item(self : Self, item : TranscriptItem) -> Unit {
-  self.append_transcript(item.to_doc())
+  self.append_transcript(@doc.ToDoc::to_doc(item))
 }
 
 ///|

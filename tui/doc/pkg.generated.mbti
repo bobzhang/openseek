@@ -46,3 +46,6 @@ pub fn Text::wrap(Self, width~ : Int) -> Array[@surface.Line]
 // Type aliases
 
 // Traits
+pub(open) trait ToDoc {
+  fn to_doc(Self) -> Doc
+}

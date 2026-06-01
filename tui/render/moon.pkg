@@ -1,4 +1,5 @@
 import {
+  "bobzhang/openseek/tui/core",
   "bobzhang/openseek/tui/doc",
   "bobzhang/openseek/tui/internal/composer",
   "bobzhang/openseek/tui/internal/surface",
