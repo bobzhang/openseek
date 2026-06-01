@@ -65,33 +65,27 @@ fn normalized_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
 ///|
 /// The terminal-row interval `[top, bottom]` a redraw must repaint.
 ///
-/// It is the union of the new live area and the previous frame's footprint — so
-/// rows the live area vacates get cleared, not just the new ones — clamped to
-/// the screen. When the previous frame's content was dropped
-/// (`old_content_unknown`), the interval extends to the screen bottom to clear
-/// any stale rows below it. A result with `top > bottom` means nothing needs
-/// repainting.
+/// It is the union of the `new` live area and the previous frame's footprint
+/// `old` (absent on the first draw) — so rows the live area vacates get cleared,
+/// not just the new ones — clamped to the screen. When the previous frame's
+/// content was dropped (`old_content_unknown`), the interval extends to the
+/// screen bottom to clear any stale rows below it. A result with `top > bottom`
+/// means nothing needs repainting.
 fn redraw_span(
   old : Geometry?,
-  new_top~ : Int,
-  new_height~ : Int,
+  new : Geometry,
   screen_rows~ : Int,
   old_content_unknown~ : Bool,
 ) -> (Int, Int) {
   let old_bottom = match old {
     Some(g) => g.bottom()
-    None => new_top - 1
-  }
-  let new_bottom = if new_height > 0 {
-    new_top + new_height - 1
-  } else {
-    new_top - 1
+    None => new.top - 1
   }
   let top = match old {
-    Some(g) if g.top < new_top => g.top
-    _ => new_top
+    Some(g) if g.top < new.top => g.top
+    _ => new.top
   }
-  let bottom = if old_bottom > new_bottom { old_bottom } else { new_bottom }
+  let bottom = if old_bottom > new.bottom() { old_bottom } else { new.bottom() }
   let bottom = if old_content_unknown { screen_rows } else { bottom }
   let top = if top < 1 { 1 } else { top }
   let bottom = if bottom > screen_rows { screen_rows } else { bottom }

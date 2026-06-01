@@ -42,8 +42,7 @@ test "redraw_span unions the old and new live-area footprints" {
     span_str(
       redraw_span(
         Some({ top: 8, height: 3 }),
-        new_top=8,
-        new_height=3,
+        { top: 8, height: 3 },
         screen_rows=12,
         old_content_unknown=false,
       ),
@@ -55,8 +54,7 @@ test "redraw_span unions the old and new live-area footprints" {
     span_str(
       redraw_span(
         Some({ top: 8, height: 3 }),
-        new_top=8,
-        new_height=2,
+        { top: 8, height: 2 },
         screen_rows=12,
         old_content_unknown=false,
       ),
@@ -69,8 +67,7 @@ test "redraw_span unions the old and new live-area footprints" {
     span_str(
       redraw_span(
         Some({ top: 6, height: 3 }),
-        new_top=8,
-        new_height=3,
+        { top: 8, height: 3 },
         screen_rows=12,
         old_content_unknown=false,
       ),
@@ -82,8 +79,7 @@ test "redraw_span unions the old and new live-area footprints" {
     span_str(
       redraw_span(
         None,
-        new_top=3,
-        new_height=4,
+        { top: 3, height: 4 },
         screen_rows=12,
         old_content_unknown=false,
       ),
@@ -95,8 +91,7 @@ test "redraw_span unions the old and new live-area footprints" {
     span_str(
       redraw_span(
         Some({ top: 8, height: 3 }),
-        new_top=2,
-        new_height=4,
+        { top: 2, height: 4 },
         screen_rows=12,
         old_content_unknown=true,
       ),

@@ -313,8 +313,7 @@ async fn Viewport::draw_placed_surface_rows(
   let old_content_unknown = old is Some(_) && old_frame is None
   let (draw_top, draw_bottom) = redraw_span(
     old,
-    new_top~,
-    new_height~,
+    { top: new_top, height: new_height },
     screen_rows=self.size.rows(),
     old_content_unknown~,
   )
