@@ -234,7 +234,7 @@ async fn with_scroll_region(
 /// above the new (higher) live-area top.
 async fn scroll_scrollback_up_for_growth(
   tty : @tty.Tty,
-  old : Geometry?,
+  old : Geometry,
   new_top~ : Int,
 ) -> Unit {
   // old:                                     new:
@@ -251,9 +251,7 @@ async fn scroll_scrollback_up_for_growth(
   //
   // Here we need to make rooms for 2 rows. Since top is 1-based line number from the top
   // of the terminal, we can obtain the number of rows to make by old.top - new_top.
-  // With no prior frame there is nothing above to scroll, so this is a no-op.
   //
-  guard old is Some(old) else { return }
   let rows = old.top - new_top
   let scrollback_bottom = old.top - 1
   if rows > 0 && scrollback_bottom >= 1 {
@@ -265,61 +263,86 @@ async fn scroll_scrollback_up_for_growth(
 }
 
 ///|
-async fn Viewport::draw_placed_surface_rows(
+/// Paint the first frame: draw every row of the new area (there is nothing on
+/// screen yet to diff against) and place the cursor.
+async fn Viewport::enter_placed_surface_rows(
   self : Viewport,
   tty : @tty.Tty,
-  old_frame : @surface.Surface?,
-  old : Geometry?,
   new_frame~ : @surface.Surface,
   new_top~ : Int,
 ) -> Unit {
   let new_height = new_frame.height()
-  let old_content_unknown = old is Some(_) && old_frame is None
+  let (draw_top, draw_bottom) = calculate_enter_span(
+    { top: new_top, height: new_height },
+    screen_rows=self.size.rows(),
+  )
+  guard draw_top <= draw_bottom else { return }
+  tty.hide_cursor()
+  for row in draw_top..<=draw_bottom {
+    draw_surface_line_at(
+      tty,
+      row,
+      line_at_terminal_row(new_frame, row~, top=new_top, height=new_height),
+    )
+  }
+  place_cursor(tty, new_frame, top=new_top)
+}
+
+///|
+/// Redraw over a previous frame: repaint only the rows that changed within the
+/// union of the old and new footprints, then move the cursor. `old_frame` is the
+/// cached surface to diff against, or `None` — a dropped cache (`old_content_
+/// unknown`) — which forces a full repaint of the span.
+async fn Viewport::redraw_placed_surface_rows(
+  self : Viewport,
+  tty : @tty.Tty,
+  old_frame : @surface.Surface?,
+  old : Geometry,
+  new_frame~ : @surface.Surface,
+  new_top~ : Int,
+) -> Unit {
+  let new_height = new_frame.height()
+  let old_content_unknown = old_frame is None
   let (draw_top, draw_bottom) = calculate_redraw_span(
     old,
     { top: new_top, height: new_height },
     screen_rows=self.size.rows(),
     old_content_unknown~,
   )
-  if draw_top <= draw_bottom {
-    let mut rows_changed = false
-    for row in draw_top..<=draw_bottom {
-      let old_line = match (old_frame, old) {
-        (Some(frame), Some(g)) =>
-          line_at_terminal_row(frame, row~, top=g.top, height=g.height)
-        _ => None
+  guard draw_top <= draw_bottom else { return }
+  let mut rows_changed = false
+  for row in draw_top..<=draw_bottom {
+    let old_line = if old_frame is Some(frame) {
+      line_at_terminal_row(frame, row~, top=old.top, height=old.height)
+    } else {
+      None
+    }
+    let new_line = line_at_terminal_row(
+      new_frame,
+      row~,
+      top=new_top,
+      height=new_height,
+    )
+    if old_content_unknown || old_line != new_line {
+      if !rows_changed {
+        tty.hide_cursor()
+        rows_changed = true
       }
-      let new_line = line_at_terminal_row(
-        new_frame,
-        row~,
-        top=new_top,
-        height=new_height,
-      )
-      if old_content_unknown || old_line != new_line {
-        if !rows_changed {
-          tty.hide_cursor()
-          rows_changed = true
-        }
-        draw_surface_line_at(tty, row, new_line)
-      }
+      draw_surface_line_at(tty, row, new_line)
     }
-    let cursor_changed = match (old_frame, old) {
-      (Some(frame), Some(g)) =>
-        !same_terminal_cursor(frame, new_frame, top=g.top, other_top=new_top)
-      _ => true
-    }
-    if rows_changed {
-      tty.show_cursor()
-      tty.set_cursor_position(
-        new_top + new_frame.cursor().row(),
-        1 + new_frame.cursor().col(),
-      )
-    } else if cursor_changed {
-      tty.set_cursor_position(
-        new_top + new_frame.cursor().row(),
-        1 + new_frame.cursor().col(),
-      )
-    }
+  }
+  let cursor_changed = if old_frame is Some(frame) {
+    !same_terminal_cursor(frame, new_frame, top=old.top, other_top=new_top)
+  } else {
+    true
+  }
+  if rows_changed {
+    place_cursor(tty, new_frame, top=new_top)
+  } else if cursor_changed {
+    tty.set_cursor_position(
+      new_top + new_frame.cursor().row(),
+      1 + new_frame.cursor().col(),
+    )
   }
 }
 
@@ -372,36 +395,6 @@ pub async fn Viewport::replay_with_rows_before(
 }
 
 ///|
-/// Place the geometry at `top`/`height` and paint `surface` into it, diffing
-/// against the previous frame and scrolling committed rows into scrollback if
-/// the area grew. The shared tail of `enter` and `redraw`, which differ only in
-/// how they choose `top`.
-async fn Viewport::paint(
-  self : Viewport,
-  tty : @tty.Tty,
-  surface : @surface.Surface,
-  top~ : Int,
-  height~ : Int,
-) -> Unit {
-  // The previous frame's surface (for row diffing) and footprint (for clearing
-  // vacated rows) must be read before set_geometry overwrites the geometry.
-  let old_frame = self.cache.surface()
-  let old = self.cache.footprint(live_top=self.top())
-  self.set_geometry(top~, height~)
-  let surface = surface.with_max_rows(self.height())
-  let new_top = self.top()
-  scroll_scrollback_up_for_growth(tty, old, new_top~)
-  self.draw_placed_surface_rows(
-    tty,
-    old_frame,
-    old,
-    new_frame=surface,
-    new_top~,
-  )
-  self.cache = Drawn(surface)
-}
-
-///|
 /// Draw `surface` as the live area for the first time, anchoring it at the
 /// terminal cursor.
 ///
@@ -409,10 +402,9 @@ async fn Viewport::paint(
 /// the app started — so committed output above stays put. When the cursor is
 /// near the bottom (say row 23 of 24 while the area needs 7 rows) it leaves too
 /// little room beneath it, so `clamp_top` raises `top` to `calculate_max_top`
-/// (here 18) and `scroll_scrollback_up_for_growth` (inside `paint`) pushes the
-/// rows above into scrollback. When the cursor position can't be queried, assume
-/// the worst case (no room below) and start at `calculate_max_top`. The cursor
-/// query is the one blocking read, hence `timeout_ms`.
+/// (here 18). When the cursor position can't be queried, assume the worst case
+/// (no room below) and start at `calculate_max_top`. The cursor query is the one
+/// blocking read, hence `timeout_ms`.
 pub async fn Viewport::enter(
   self : Viewport,
   tty : @tty.Tty,
@@ -425,25 +417,43 @@ pub async fn Viewport::enter(
   } else {
     calculate_max_top(self.size, height)
   }
-  self.paint(tty, surface, top~, height~)
+  self.set_geometry(top~, height~)
+  let surface = surface.with_max_rows(self.height())
+  self.enter_placed_surface_rows(tty, new_frame=surface, new_top=self.top())
+  self.cache = Drawn(surface)
 }
 
 ///|
-/// Redraw `surface` in place, holding the previous `top`.
+/// Redraw `surface` in place over the previous frame, holding the previous `top`.
 ///
 /// Readline-style ownership: growth uses the blank rows below first and only
 /// pushes upward once the taller area would overflow the screen bottom;
 /// shrinking holds `top` too. Clamping the old top to `calculate_max_top` is
 /// exactly that — it keeps `top` put while the area fits and raises it by just
-/// enough when it would not. Must be called after `enter` has placed the area.
+/// enough when it would not. A no-op before `enter` has placed the area.
 pub async fn Viewport::redraw(
   self : Viewport,
   tty : @tty.Tty,
   surface : @surface.Surface,
 ) -> Unit {
+  // The previous frame (for diffing) and its footprint (for clearing vacated
+  // rows) must be read before set_geometry moves the live area.
+  let old_frame = self.cache.surface()
+  guard self.cache.footprint(live_top=self.top()) is Some(old) else { return }
   let height = clamp_height(self.size, surface.height())
   let top = clamp_top(self.size, height, self.top())
-  self.paint(tty, surface, top~, height~)
+  self.set_geometry(top~, height~)
+  let surface = surface.with_max_rows(self.height())
+  let new_top = self.top()
+  scroll_scrollback_up_for_growth(tty, old, new_top~)
+  self.redraw_placed_surface_rows(
+    tty,
+    old_frame,
+    old,
+    new_frame=surface,
+    new_top~,
+  )
+  self.cache = Drawn(surface)
 }
 
 ///|

@@ -63,39 +63,40 @@ fn clamp_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
 }
 
 ///|
-/// The terminal-row interval `[top, bottom]` a redraw must repaint.
-///
-/// It is the union of the `new` live area and the previous frame's footprint
-/// `old` (absent on the first draw) — so rows the live area vacates get cleared,
-/// not just the new ones — clamped to the screen. When the previous frame's
-/// content was dropped (`old_content_unknown`), the interval extends to the
-/// screen bottom to clear any stale rows below it. A result with `top > bottom`
-/// means nothing needs repainting.
+/// The terminal-row interval `[top, bottom]` to repaint on the first draw: just
+/// the `new` live area, clamped onto the screen. There is nothing on screen yet,
+/// so nothing above or below needs clearing.
+fn calculate_enter_span(new : Geometry, screen_rows~ : Int) -> (Int, Int) {
+  let top = if new.top < 1 { 1 } else { new.top }
+  let bottom = if new.bottom() > screen_rows {
+    screen_rows
+  } else {
+    new.bottom()
+  }
+  (top, bottom)
+}
+
+///|
+/// The terminal-row interval `[top, bottom]` a redraw must repaint: the union of
+/// the `new` live area and the previous frame's footprint `old` — so rows the
+/// live area vacated (by shrinking or moving up) get cleared, not just the new
+/// ones — clamped to the screen. When the previous frame's content was dropped
+/// (`old_content_unknown`), the interval extends to the screen bottom to clear
+/// any stale rows below it. A result with `top > bottom` means nothing needs
+/// repainting.
 fn calculate_redraw_span(
-  old : Geometry?,
+  old : Geometry,
   new : Geometry,
   screen_rows~ : Int,
   old_content_unknown~ : Bool,
 ) -> (Int, Int) {
-  let (top, bottom) = match old {
-    // First draw: nothing was on screen before, so repaint just the new area.
-    None => (new.top, new.bottom())
-    // Redraw: union the new area with the previous frame's footprint, so the
-    // rows the live area vacated (by shrinking or moving up) get cleared too.
-    // When the cached frame was dropped (`old_content_unknown`) we no longer
-    // know what sits below, so clear all the way to the screen bottom.
-    Some(old) => {
-      let top = if old.top < new.top { old.top } else { new.top }
-      let union_bottom = if old.bottom() > new.bottom() {
-        old.bottom()
-      } else {
-        new.bottom()
-      }
-      let bottom = if old_content_unknown { screen_rows } else { union_bottom }
-      (top, bottom)
-    }
+  let top = if old.top < new.top { old.top } else { new.top }
+  let union_bottom = if old.bottom() > new.bottom() {
+    old.bottom()
+  } else {
+    new.bottom()
   }
-  // Clamp onto the screen; a resulting `top > bottom` means nothing to repaint.
+  let bottom = if old_content_unknown { screen_rows } else { union_bottom }
   let top = if top < 1 { 1 } else { top }
   let bottom = if bottom > screen_rows { screen_rows } else { bottom }
   (top, bottom)

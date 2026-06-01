@@ -36,12 +36,25 @@ fn span_str(span : (Int, Int)) -> String {
 }
 
 ///|
+test "calculate_enter_span repaints just the new area, clamped" {
+  inspect(
+    span_str(calculate_enter_span({ top: 3, height: 4 }, screen_rows=12)),
+    content="3..6",
+  )
+  // Clamped to the screen bottom.
+  inspect(
+    span_str(calculate_enter_span({ top: 10, height: 5 }, screen_rows=12)),
+    content="10..12",
+  )
+}
+
+///|
 test "calculate_redraw_span unions the old and new live-area footprints" {
   // Same placement: repaint just that region.
   inspect(
     span_str(
       calculate_redraw_span(
-        Some({ top: 8, height: 3 }),
+        { top: 8, height: 3 },
         { top: 8, height: 3 },
         screen_rows=12,
         old_content_unknown=false,
@@ -53,7 +66,7 @@ test "calculate_redraw_span unions the old and new live-area footprints" {
   inspect(
     span_str(
       calculate_redraw_span(
-        Some({ top: 8, height: 3 }),
+        { top: 8, height: 3 },
         { top: 8, height: 2 },
         screen_rows=12,
         old_content_unknown=false,
@@ -66,7 +79,7 @@ test "calculate_redraw_span unions the old and new live-area footprints" {
   inspect(
     span_str(
       calculate_redraw_span(
-        Some({ top: 6, height: 3 }),
+        { top: 6, height: 3 },
         { top: 8, height: 3 },
         screen_rows=12,
         old_content_unknown=false,
@@ -74,23 +87,11 @@ test "calculate_redraw_span unions the old and new live-area footprints" {
     ),
     content="6..10",
   )
-  // First placement (no old region): repaint just the new area.
-  inspect(
-    span_str(
-      calculate_redraw_span(
-        None,
-        { top: 3, height: 4 },
-        screen_rows=12,
-        old_content_unknown=false,
-      ),
-    ),
-    content="3..6",
-  )
   // Dropped old content: extend to the screen bottom to clear stale rows.
   inspect(
     span_str(
       calculate_redraw_span(
-        Some({ top: 8, height: 3 }),
+        { top: 8, height: 3 },
         { top: 2, height: 4 },
         screen_rows=12,
         old_content_unknown=true,
