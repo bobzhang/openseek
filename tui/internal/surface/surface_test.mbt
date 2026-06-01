@@ -2,8 +2,8 @@
 test "surface cursor is normalized when stored" {
   let rows = [Line::new([]), Line::new([])]
   let surface = Surface::new(width=4, rows~, cursor=Cursor::new(row=9, col=9))
-  inspect(surface.cursor.row, content="1")
-  inspect(surface.cursor.col, content="3")
+  inspect(surface.cursor().row(), content="1")
+  inspect(surface.cursor().col(), content="3")
 }
 
 ///|
