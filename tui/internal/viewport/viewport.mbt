@@ -25,8 +25,7 @@ struct Viewport {
 }
 
 ///|
-pub fn Viewport::new(height~ : Int) -> Viewport {
-  let _ = height
+pub fn Viewport::new() -> Viewport {
   { size: @terminal_size.TerminalSize::default(), geometry: None, cache: Fresh }
 }
 

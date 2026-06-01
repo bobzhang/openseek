@@ -21,7 +21,7 @@ fn Ui::new(tty : @tty.Tty, config : Config) -> Ui {
   {
     tty,
     config,
-    viewport: @viewport.Viewport::new(height=1),
+    viewport: @viewport.Viewport::new(),
     composer,
     history: @history.History::new(),
     transcript: [],
