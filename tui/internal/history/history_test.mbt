@@ -1,18 +1,18 @@
 ///|
-fn prompt_entry(text : String) -> Entry {
+fn prompt_entry(text : String) -> @history.Entry {
   let composer = @composer.Model::new()
-  Entry::new(text, composer.mode())
+  @history.Entry::new(text, composer.mode())
 }
 
 ///|
-fn shell_entry(text : String) -> Entry {
+fn shell_entry(text : String) -> @history.Entry {
   let composer = @composer.Model::new()
   composer.insert_user_text("!" + text)
-  Entry::new(composer.text(), composer.mode())
+  @history.Entry::new(composer.text(), composer.mode())
 }
 
 ///|
-fn recalled_text(entry : Entry?) -> String {
+fn recalled_text(entry : @history.Entry?) -> String {
   match entry {
     Some(entry) => entry.text()
     None => "<none>"
@@ -20,7 +20,7 @@ fn recalled_text(entry : Entry?) -> String {
 }
 
 ///|
-fn recalled_is_shell(entry : Entry?) -> Bool {
+fn recalled_is_shell(entry : @history.Entry?) -> Bool {
   match entry {
     Some(entry) => entry.mode().is_shell()
     None => false
@@ -28,7 +28,7 @@ fn recalled_is_shell(entry : Entry?) -> Bool {
 }
 
 ///|
-fn recalled_is_input(entry : Entry?) -> Bool {
+fn recalled_is_input(entry : @history.Entry?) -> Bool {
   match entry {
     Some(entry) => entry.mode().is_input()
     None => false
@@ -37,7 +37,7 @@ fn recalled_is_input(entry : Entry?) -> Bool {
 
 ///|
 test "history recalls entries and restores draft" {
-  let history = History::new()
+  let history = @history.History::new()
   inspect(history.previous(prompt_entry("draft")) is None, content="true")
   history.push(prompt_entry("one"))
   history.push(prompt_entry("two"))
@@ -56,7 +56,7 @@ test "history recalls entries and restores draft" {
 
 ///|
 test "history skips empty and adjacent duplicate entries" {
-  let history = History::new()
+  let history = @history.History::new()
   history.push(prompt_entry(""))
   inspect(history.previous(prompt_entry("draft")) is None, content="true")
   history.push(prompt_entry("same"))
@@ -69,7 +69,7 @@ test "history skips empty and adjacent duplicate entries" {
 
 ///|
 test "history distinguishes shell and prompt entries" {
-  let history = History::new()
+  let history = @history.History::new()
   history.push(prompt_entry("pwd"))
   history.push(shell_entry("pwd"))
   let previous = history.previous(prompt_entry("draft"))

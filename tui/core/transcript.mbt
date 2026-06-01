@@ -64,7 +64,7 @@ fn bulleted_lines(
   let lines = text.split_lines()
   for index in 0..<lines.length() {
     let marker = if index == 0 { first } else { rest }
-    texts.push(lines[index].prepend_span(@doc.Span(marker, style~)))
+    texts.push(lines[index].prepend_span(Span(marker, style~)))
   }
   texts
 }
@@ -78,7 +78,7 @@ pub impl @doc.ToDoc for TranscriptItem with fn to_doc(self) {
   match self {
     Input(input) => input.to_doc()
     Response(content) =>
-      @doc.Doc(
+      Doc(
         bulleted_lines(
           @doc.Text::plain(content),
           first="• ",
@@ -87,9 +87,9 @@ pub impl @doc.ToDoc for TranscriptItem with fn to_doc(self) {
         ),
       )
     Reasoning(text) =>
-      @doc.Doc(
+      Doc(
         bulleted_lines(
-          @doc.Text([@doc.Span(text, style=@doc.Style::dim())]),
+          Text([Span(text, style=@doc.Style::dim())]),
           first="• ",
           rest="  ",
           style=@doc.Style::dim(),
@@ -100,25 +100,23 @@ pub impl @doc.ToDoc for TranscriptItem with fn to_doc(self) {
         .map(status => status.style())
         .unwrap_or(@doc.Style::dim())
       let texts : Array[@doc.Text] = [
-        call.title.prepend_span(@doc.Span("• ", style=bullet_style)),
+        call.title.prepend_span(Span("• ", style=bullet_style)),
       ]
       let mut has_detail_line = false
       for detail in call.details {
         for line in detail.split_lines() {
           let marker = if has_detail_line { "    " } else { "  └ " }
-          texts.push(
-            line.prepend_span(@doc.Span(marker, style=@doc.Style::dim())),
-          )
+          texts.push(line.prepend_span(Span(marker, style=@doc.Style::dim())))
           has_detail_line = true
         }
       }
-      @doc.Doc(texts)
+      Doc(texts)
     }
     Error(message) => {
       let error_style = @doc.Style::error()
-      @doc.Doc(
+      Doc(
         bulleted_lines(
-          @doc.Text([@doc.Span(message, style=error_style)]),
+          Text([Span(message, style=error_style)]),
           first="■ ",
           rest="  ",
           style=error_style,

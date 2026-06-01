@@ -1,6 +1,6 @@
 ///|
 test "composer surface renders viewport rows and cursor" {
-  let surface = composer_surface(
+  let surface = @render.composer_surface(
     @composer.Model::new(),
     activity=None,
     queued_inputs=[],
@@ -27,7 +27,7 @@ test "composer surface renders viewport rows and cursor" {
 test "composer surface grows with multiline input up to max rows" {
   let two_lines = @composer.Model::new()
   two_lines.insert("a\nb")
-  let two_line_surface = composer_surface(
+  let two_line_surface = @render.composer_surface(
     two_lines,
     activity=None,
     queued_inputs=[],
@@ -46,7 +46,7 @@ test "composer surface grows with multiline input up to max rows" {
   inspect(@text.display_width(two_line_surface.line_at(2).text()), content="12")
   let five_lines = @composer.Model::new()
   five_lines.insert("a\nb\nc\nd\ne")
-  let capped_surface = composer_surface(
+  let capped_surface = @render.composer_surface(
     five_lines,
     activity=None,
     queued_inputs=[],
@@ -71,10 +71,10 @@ test "composer surface grows with multiline input up to max rows" {
 
 ///|
 test "composer surface renders queued inputs above composer" {
-  let surface = composer_surface(
+  let surface = @render.composer_surface(
     @composer.Model::new(),
     activity=None,
-    queued_inputs=[@core.Prompt("first"), @core.Command("pwd")],
+    queued_inputs=[Prompt("first"), Command("pwd")],
     status=@doc.Text::plain("ready"),
     notice=None,
     cols=40,
@@ -90,7 +90,7 @@ test "composer surface renders queued inputs above composer" {
 
 ///|
 test "composer surface renders the input viewport" {
-  let surface = composer_surface(
+  let surface = @render.composer_surface(
     @composer.Model::new(),
     activity=None,
     queued_inputs=[],
@@ -115,7 +115,7 @@ test "composer surface renders the input viewport" {
 
 ///|
 test "composer surface renders activity above separator" {
-  let surface = composer_surface(
+  let surface = @render.composer_surface(
     @composer.Model::new(),
     activity=Some(@doc.Text::plain("Working (0s • esc to interrupt)")),
     queued_inputs=[],
@@ -139,7 +139,7 @@ test "composer surface renders activity above separator" {
 
 ///|
 test "composer surface notice overrides persistent status" {
-  let surface = composer_surface(
+  let surface = @render.composer_surface(
     @composer.Model::new(),
     activity=None,
     queued_inputs=[],

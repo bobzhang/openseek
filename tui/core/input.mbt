@@ -36,8 +36,8 @@ pub impl @doc.ToDoc for Input with fn to_doc(self) {
   let texts : Array[@doc.Text] = []
   for index in 0..<source.length() {
     texts.push(
-      @doc.Text([
-        @doc.Span(
+      Text([
+        Span(
           if index == 0 {
             self.prefix()
           } else {
@@ -49,5 +49,5 @@ pub impl @doc.ToDoc for Input with fn to_doc(self) {
       ]),
     )
   }
-  @doc.Doc(texts)
+  Doc(texts)
 }
