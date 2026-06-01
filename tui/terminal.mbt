@@ -2,10 +2,10 @@
 fn Ui::composer_surface(self : Ui) -> @surface.Surface {
   @render.composer_surface(
     self.composer,
-    self.activity,
-    self.queued_inputs,
-    self.status,
-    self.notice,
+    activity=self.activity,
+    queued_inputs=self.queued_inputs,
+    status=self.status,
+    notice=self.notice,
     cols=self.viewport.cols(),
   )
 }

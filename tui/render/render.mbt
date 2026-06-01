@@ -60,10 +60,10 @@ fn status_line(
 /// `notice` taking precedence when present.
 pub fn composer_surface(
   composer : @composer.Model,
-  activity : @doc.Text?,
-  queued_inputs : Array[@core.Input],
-  status : @doc.Text,
-  notice : @doc.Text?,
+  activity~ : @doc.Text?,
+  queued_inputs~ : Array[@core.Input],
+  status~ : @doc.Text,
+  notice~ : @doc.Text?,
   cols~ : Int,
 ) -> @surface.Surface {
   let rows : Array[@surface.Line] = []
