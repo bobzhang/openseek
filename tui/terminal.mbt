@@ -26,10 +26,22 @@ async fn Ui::redraw(self : Self) -> Unit {
 }
 
 ///|
+/// Lay out one transcript item, prefixed with a blank separator row so items
+/// are visually spaced apart (matching the Codex TUI). The separator is plain,
+/// outside any item background block.
+fn Ui::item_rows(self : Self, doc : Doc) -> Array[@viewport.Line] {
+  let rows : Array[@viewport.Line] = [@viewport.Line::new([])]
+  for row in doc.layout(width=self.viewport.cols()) {
+    rows.push(row)
+  }
+  rows
+}
+
+///|
 fn Ui::transcript_rows(self : Self) -> Array[@viewport.Line] {
   let rows : Array[@viewport.Line] = []
   for doc in self.transcript {
-    for row in doc.layout(width=self.viewport.cols()) {
+    for row in self.item_rows(doc) {
       rows.push(row)
     }
   }
@@ -57,10 +69,7 @@ pub async fn Ui::append_transcript(self : Self, doc : Doc) -> Unit {
   self.commands.wait(() => {
     self.transcript.push(doc)
     self.viewport.refresh_size(self.tty)
-    self.viewport.insert_before(
-      self.tty,
-      doc.layout(width=self.viewport.cols()),
-    )
+    self.viewport.insert_before(self.tty, self.item_rows(doc))
     self.redraw_frame()
   })
 }

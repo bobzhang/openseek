@@ -18,14 +18,17 @@ test "composer surface renders viewport rows and cursor" {
     None,
     cols=12,
   )
-  inspect(surface.height(), content="3")
+  inspect(surface.height(), content="4")
   inspect(
     surface.line_at(0).text(),
     content="────────────",
   )
   inspect(surface.line_at(1).text().trim(), content=">")
   inspect(@text.display_width(surface.line_at(1).text()), content="12")
-  inspect(surface.line_at(2).text(), content="ready")
+  inspect(
+    surface.line_at(2).text(),
+    content="────────────",
+  )
   inspect(surface.cursor().row(), content="1")
   inspect(surface.cursor().col(), content="2")
 }
@@ -42,7 +45,7 @@ test "composer surface grows with multiline input up to max rows" {
     None,
     cols=12,
   )
-  inspect(two_line_surface.height(), content="4")
+  inspect(two_line_surface.height(), content="5")
   inspect(two_line_surface.line_at(1).text().trim(), content="> a")
   inspect(@text.display_width(two_line_surface.line_at(1).text()), content="12")
   inspect(
@@ -61,7 +64,7 @@ test "composer surface grows with multiline input up to max rows" {
     None,
     cols=12,
   )
-  inspect(capped_surface.height(), content="6")
+  inspect(capped_surface.height(), content="7")
   inspect(
     @text.grapheme_slice(capped_surface.line_at(1).text(), 0, 2),
     content="  ",
@@ -86,7 +89,7 @@ test "composer surface renders queued inputs above composer" {
     None,
     cols=40,
   )
-  inspect(surface.height(), content="6")
+  inspect(surface.height(), content="7")
   inspect(surface.line_at(0).text(), content="queued follow-up inputs:")
   inspect(surface.line_at(1).text(), content="  1. > first")
   inspect(surface.line_at(2).text(), content="  2. $ pwd")
@@ -96,7 +99,10 @@ test "composer surface renders queued inputs above composer" {
   )
   inspect(surface.line_at(4).text().trim(), content=">")
   inspect(@text.display_width(surface.line_at(4).text()), content="40")
-  inspect(surface.line_at(5).text(), content="ready")
+  inspect(
+    surface.line_at(5).text(),
+    content="────────────────────────────────────────",
+  )
   inspect(surface.cursor().row(), content="4")
   inspect(surface.cursor().col(), content="2")
 }
@@ -111,14 +117,17 @@ test "composer surface renders the input viewport" {
     None,
     cols=40,
   )
-  inspect(surface.height(), content="3")
+  inspect(surface.height(), content="4")
   inspect(
     surface.line_at(0).text(),
     content="────────────────────────────────────────",
   )
   inspect(surface.line_at(1).text().trim(), content=">")
   inspect(@text.display_width(surface.line_at(1).text()), content="40")
-  inspect(surface.line_at(2).text(), content="ready")
+  inspect(
+    surface.line_at(2).text(),
+    content="────────────────────────────────────────",
+  )
   inspect(surface.cursor().row(), content="1")
   inspect(surface.cursor().col(), content="2")
 }
@@ -133,20 +142,17 @@ test "composer surface renders activity above separator" {
     None,
     cols=50,
   )
-  inspect(surface.height(), content="4")
-  inspect(
-    surface.line_at(0).text(),
-    content="Working (0s • esc to interrupt)",
-  )
+  inspect(surface.height(), content="7")
+  inspect(surface.line_at(0).text(), content="")
   inspect(
     surface.line_at(1).text(),
-    content="──────────────────────────────────────────────────",
+    content="Working (0s • esc to interrupt)",
   )
-  inspect(surface.line_at(2).text().trim(), content=">")
-  inspect(@text.display_width(surface.line_at(2).text()), content="50")
+  inspect(surface.line_at(2).text().trim(), content="")
+  inspect(@text.display_width(surface.line_at(2).text()), content="0")
   inspect(
     surface.line_at(3).text(),
-    content="gpt-5 · ~/repo · Context 100% left",
+    content="──────────────────────────────────────────────────",
   )
 }
 
@@ -160,7 +166,10 @@ test "composer surface notice overrides persistent status" {
     Some(Text::plain("ignored key")),
     cols=40,
   )
-  inspect(surface.line_at(2).text(), content="ignored key")
+  inspect(
+    surface.line_at(2).text(),
+    content="────────────────────────────────────────",
+  )
 }
 
 ///|

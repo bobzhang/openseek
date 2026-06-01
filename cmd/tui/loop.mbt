@@ -106,8 +106,22 @@ fn update(state : State, message : Msg) -> Array[Cmd] {
   match message {
     UiInput(event) =>
       match event {
-        // TODO: It is not possible to implement steering with current agent API
-        Steer(input) | Queue(input) => state.queued.push(input)
+        // Steering (redirecting a task mid-run) is not implementable with the
+        // current agent API. Steer only submits when idle; while a task runs it
+        // reports an error instead of silently queuing. Queue always queues.
+        Steer(input) =>
+          if state.run is Idle {
+            state.queued.push(input)
+          } else {
+            cmds.push(
+              AppendItem(
+                Error(
+                  "Steering is not supported while a task is running. Press Tab to queue this input.",
+                ),
+              ),
+            )
+          }
+        Queue(input) => state.queued.push(input)
         Interrupt =>
           match state.run {
             Idle =>

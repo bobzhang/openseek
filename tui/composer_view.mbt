@@ -61,7 +61,9 @@ fn render_composer_surface(
     rows.push(row)
   }
   if activity is Some(activity) {
+    rows.push(@viewport.Line::new([]))
     rows.push(activity.first_line(width=cols))
+    rows.push(@viewport.Line::new([]))
   }
   let composer_top = rows.length()
   rows.push(render_separator_line(cols~))
@@ -74,6 +76,7 @@ fn render_composer_surface(
       ),
     )
   }
+  rows.push(render_separator_line(cols~))
   rows.push(render_status_line(status, notice, cols~))
   @viewport.Surface::new(
     width=cols,

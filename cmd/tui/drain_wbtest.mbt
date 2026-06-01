@@ -15,6 +15,17 @@ fn start_agent_count(cmds : Array[Cmd]) -> Int {
 }
 
 ///|
+fn error_item_count(cmds : Array[Cmd]) -> Int {
+  let mut count = 0
+  for cmd in cmds {
+    if cmd is AppendItem(Error(_)) {
+      count = count + 1
+    }
+  }
+  count
+}
+
+///|
 test "queued input drains exactly when the agent is idle" {
   let state = drain_test_state()
 
@@ -55,4 +66,25 @@ test "a tick while idle never starts an agent" {
   let cmds = update(state, Tick)
   assert_true(state.run is Idle)
   assert_eq(start_agent_count(cmds), 0)
+}
+
+///|
+test "steering a running agent reports an error and does not queue" {
+  let state = drain_test_state()
+
+  // Idle Steer submits and starts a task.
+  let _ = update(state, UiInput(Steer(Prompt("a"))))
+  assert_true(state.run is Running(_))
+  assert_eq(state.queued.length(), 0)
+
+  // Steer while running: error, nothing queued, nothing started.
+  let cmds = update(state, UiInput(Steer(Prompt("b"))))
+  assert_eq(state.queued.length(), 0)
+  assert_eq(start_agent_count(cmds), 0)
+  assert_eq(error_item_count(cmds), 1)
+
+  // Queue while running still queues without error.
+  let cmds = update(state, UiInput(Queue(Prompt("c"))))
+  assert_eq(state.queued.length(), 1)
+  assert_eq(error_item_count(cmds), 0)
 }
