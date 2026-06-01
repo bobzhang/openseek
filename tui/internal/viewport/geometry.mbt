@@ -9,59 +9,42 @@
 //   ...             │  live area: `height` rows redrawn in place by the app
 //   top+height-1   ─┘  (this row is `bottom`)
 //   ...                blank rows below the live area, if any
-//   size.rows          last on-screen row
+//   size.rows()        last on-screen row
 //
 // `top` is the terminal row where the live area starts, `height` how many rows
 // it occupies, and `bottom = top + height - 1`. The live area must fit on
 // screen, so `top` is clamped to `max_top_for` — the lowest start row that
-// still leaves `height` rows above `size.rows`.
+// still leaves `height` rows above `size.rows()`.
 //
 // Every function here is total and side-effect free: results are clamped into a
-// drawable range so the terminal-facing code in `viewport.mbt` never has to
-// re-validate geometry.
+// drawable range so the rest of `viewport.mbt` never has to re-validate
+// geometry. They take an already-normalized `@layout.TerminalSize`, so screen
+// dimensions are always positive; only the app-chosen `top`/`height` are clamped
+// here.
 
 ///|
-const DefaultTerminalRows : Int = 24
-
-///|
-const DefaultTerminalCols : Int = 80
-
-///|
-priv struct TerminalSize {
-  rows : Int
-  cols : Int
+/// Clamp a desired live-area height into `1 ..= size.rows()`.
+fn normalized_height(size : @layout.TerminalSize, height : Int) -> Int {
+  @clamp.int(height, min=1, max=size.rows())
 }
 
 ///|
-/// Replace non-positive dimensions with defaults so a terminal reporting an
-/// unknown (zero) size still yields a drawable grid.
-fn normalize_terminal_size(size : TerminalSize) -> TerminalSize {
-  {
-    rows: if size.rows < 1 {
-      DefaultTerminalRows
-    } else {
-      size.rows
-    },
-    cols: if size.cols < 1 {
-      DefaultTerminalCols
-    } else {
-      size.cols
-    },
-  }
-}
-
-///|
-/// Clamp a desired live-area height into `1 ..= size.rows`.
-fn normalized_height(size : TerminalSize, height : Int) -> Int {
-  @clamp.int(height, min=1, max=size.rows)
-}
-
-///|
-/// The lowest `top` that still fits `height` rows on screen
-/// (`size.rows - height + 1`), floored at row 1 when the live area is taller
-/// than the screen.
-fn max_top_for(size : TerminalSize, height : Int) -> Int {
-  let top = size.rows - height + 1
+/// The lowest the live area's `top` may sit and still fit entirely on screen,
+/// floored at row 1 when the live area is taller than the screen.
+///
+/// This is just `bottom <= size.rows()` solved for `top`. The live area spans
+/// `top ..= top + height - 1`, so requiring its last row to land on or above the
+/// last physical row gives:
+///
+///   top + height - 1 <= size.rows()   ⟺   top <= size.rows() - height + 1
+///
+/// Clamping `top` to this bound therefore guarantees the whole `height`-row
+/// block is visible — e.g. `rows=24, height=7` gives `18`, and `bottom = 18 + 7
+/// - 1 = 24` sits exactly on the screen bottom. `height` is pre-clamped to
+/// `<= rows` by `normalized_height`, so the bound is always `>= 1` and the clamp
+/// range stays non-empty.
+fn max_top_for(size : @layout.TerminalSize, height : Int) -> Int {
+  let top = size.rows() - height + 1
   if top < 1 {
     1
   } else {
@@ -70,8 +53,12 @@ fn max_top_for(size : TerminalSize, height : Int) -> Int {
 }
 
 ///|
-/// Clamp a desired `top` into `1 ..= max_top_for(size, height)`.
-fn normalized_top(size : TerminalSize, height : Int, top : Int) -> Int {
+/// Clamp an app-desired `top` into `1 ..= max_top_for(size, height)`.
+///
+/// The desired `top` comes from outside terminal geometry — the queried cursor
+/// row on the first draw, or the previous frame's `top` afterwards — so it can
+/// sit too low to fit the live area below it; clamping raises it just enough.
+fn normalized_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
   @clamp.int(top, min=1, max=max_top_for(size, height))
 }
 

@@ -30,7 +30,7 @@ struct Viewport {
   // cursor.
   // 1-based terminal row where the live input viewport starts.
   mut top : Int
-  mut size : TerminalSize
+  mut size : @layout.TerminalSize
   // Number of physical rows currently occupied by the live input viewport.
   // This is derived from the latest `Surface` height, so it includes rows such
   // as queued-input previews, activity, separator, composer text, and status.
@@ -45,18 +45,20 @@ struct Viewport {
 ///|
 pub fn Viewport::new(height~ : Int) -> Viewport {
   let _ = height
-  let size = { rows: DefaultTerminalRows, cols: DefaultTerminalCols }
-  { top: 0, size, height: 0, cache: Fresh }
+  { top: 0, size: @layout.TerminalSize::default(), height: 0, cache: Fresh }
 }
 
 ///|
-fn visible_height(size : TerminalSize, surface : Surface) -> Int {
+fn visible_height(
+  size : @layout.TerminalSize,
+  surface : @surface.Surface,
+) -> Int {
   normalized_height(size, surface.height())
 }
 
 ///|
 pub fn Viewport::cols(self : Viewport) -> Int {
-  self.size.cols
+  self.size.cols()
 }
 
 ///|
@@ -70,9 +72,8 @@ fn Viewport::max_top(self : Viewport) -> Int {
 }
 
 ///|
-fn Viewport::set_size(self : Viewport, size : TerminalSize) -> Unit {
-  let size = normalize_terminal_size(size)
-  if size.rows != self.size.rows || size.cols != self.size.cols {
+fn Viewport::set_size(self : Viewport, size : @layout.TerminalSize) -> Unit {
+  if size.rows() != self.size.rows() || size.cols() != self.size.cols() {
     // Terminal resize can reflow rows away from their old physical footprint.
     // Resize rebuilds from semantic rows, so the cached frame must be dropped.
     self.cache = self.cache.invalidate(live_top=self.top)
@@ -95,6 +96,16 @@ fn Viewport::set_geometry(self : Viewport, top~ : Int, height~ : Int) -> Unit {
 }
 
 ///|
+/// Where the live area should start on the very first draw.
+///
+/// Anchor it at the row the cursor currently sits on (where the shell left it
+/// when the app started) so committed output above stays put. But when the
+/// cursor is near the bottom — say row 23 of 24 while the live area needs 7 rows
+/// — that row leaves too little room beneath it, so `normalized_top` raises
+/// `top` to `max_top_for` (here 18) and `scroll_scrollback_up_for_growth` pushes
+/// the rows above into scrollback to open the space. When the cursor position
+/// can't be queried, assume the worst case (no room below) and start at
+/// `max_top_for`.
 async fn Viewport::initial_top(
   self : Viewport,
   tty : @tty.Tty,
@@ -124,9 +135,9 @@ fn Viewport::next_top(self : Viewport, height~ : Int) -> Int {
 ///|
 pub fn Viewport::refresh_size(self : Viewport, tty : @tty.Tty) -> Unit {
   let size = try tty.window_size() catch {
-    _ => { rows: DefaultTerminalRows, cols: DefaultTerminalCols }
+    _ => @layout.TerminalSize::default()
   } noraise {
-    size => { rows: size.rows, cols: size.cols }
+    size => @layout.TerminalSize::new(rows=size.rows, cols=size.cols)
   }
   self.set_size(size)
 }
@@ -154,27 +165,30 @@ async fn erase_cursor_row(tty : @tty.Tty) -> Unit {
 }
 
 ///|
-async fn Style::apply(self : Style, tty : @tty.Tty) -> Unit {
-  if self.foreground != Default {
-    tty.set_foreground(self.foreground)
+async fn apply_style(tty : @tty.Tty, style : @surface.Style) -> Unit {
+  if style.foreground() != Default {
+    tty.set_foreground(style.foreground())
   }
-  if self.background != Default {
-    tty.set_background(self.background)
+  if style.background() != Default {
+    tty.set_background(style.background())
   }
-  if self.underline {
+  if style.underline() {
     tty.underline()
   }
 }
 
 ///|
-async fn write_span(tty : @tty.Tty, span : Span) -> Unit {
-  span.style.apply(tty)
-  tty.write(span.text)
+async fn write_span(tty : @tty.Tty, span : @surface.Span) -> Unit {
+  apply_style(tty, span.style())
+  tty.write(span.text())
   tty.reset_style()
 }
 
 ///|
-async fn draw_surface_line_at_cursor(tty : @tty.Tty, line : Line?) -> Unit {
+async fn draw_surface_line_at_cursor(
+  tty : @tty.Tty,
+  line : @surface.Line?,
+) -> Unit {
   erase_cursor_row(tty)
   if line is Some(line) {
     // DECSTBM redraws full-width rows. If those rows are left as soft-wrapped
@@ -182,7 +196,7 @@ async fn draw_surface_line_at_cursor(tty : @tty.Tty, line : Line?) -> Unit {
     // live viewport before the next draw clears them.
     tty.write(DisableAutoWrap)
     try {
-      for span in line.spans {
+      for span in line.spans() {
         write_span(tty, span)
       }
     } catch {
@@ -197,7 +211,11 @@ async fn draw_surface_line_at_cursor(tty : @tty.Tty, line : Line?) -> Unit {
 }
 
 ///|
-async fn draw_surface_line_at(tty : @tty.Tty, row : Int, line : Line?) -> Unit {
+async fn draw_surface_line_at(
+  tty : @tty.Tty,
+  row : Int,
+  line : @surface.Line?,
+) -> Unit {
   tty.set_cursor_position(row, 1)
   draw_surface_line_at_cursor(tty, line)
 }
@@ -257,10 +275,10 @@ async fn scroll_scrollback_up_for_growth(
 async fn Viewport::draw_placed_surface_rows(
   self : Viewport,
   tty : @tty.Tty,
-  old_frame : Surface?,
+  old_frame : @surface.Surface?,
   old_top~ : Int,
   old_height~ : Int,
-  new_frame~ : Surface,
+  new_frame~ : @surface.Surface,
   new_top~ : Int,
 ) -> Unit {
   let new_height = new_frame.height()
@@ -270,23 +288,24 @@ async fn Viewport::draw_placed_surface_rows(
     old_height~,
     new_top~,
     new_height~,
-    screen_rows=self.size.rows,
+    screen_rows=self.size.rows(),
     old_content_unknown~,
   )
   if draw_top <= draw_bottom {
     let mut rows_changed = false
     for row in draw_top..<=draw_bottom {
       let old_line = if old_frame is Some(frame) {
-        frame.line_at_terminal_row(row~, top=old_top, height=old_height)
+        line_at_terminal_row(frame, row~, top=old_top, height=old_height)
       } else {
         None
       }
-      let new_line = new_frame.line_at_terminal_row(
+      let new_line = line_at_terminal_row(
+        new_frame,
         row~,
         top=new_top,
         height=new_height,
       )
-      if old_content_unknown || !Line::same_optional(old_line, new_line) {
+      if old_content_unknown || old_line != new_line {
         if !rows_changed {
           tty.hide_cursor()
           rows_changed = true
@@ -295,20 +314,20 @@ async fn Viewport::draw_placed_surface_rows(
       }
     }
     let cursor_changed = if old_frame is Some(frame) {
-      !frame.same_terminal_cursor(new_frame, top=old_top, other_top=new_top)
+      !same_terminal_cursor(frame, new_frame, top=old_top, other_top=new_top)
     } else {
       true
     }
     if rows_changed {
       tty.show_cursor()
       tty.set_cursor_position(
-        new_top + new_frame.cursor.row,
-        1 + new_frame.cursor.col,
+        new_top + new_frame.cursor().row(),
+        1 + new_frame.cursor().col(),
       )
     } else if cursor_changed {
       tty.set_cursor_position(
-        new_top + new_frame.cursor.row,
-        1 + new_frame.cursor.col,
+        new_top + new_frame.cursor().row(),
+        1 + new_frame.cursor().col(),
       )
     }
   }
@@ -318,9 +337,9 @@ async fn Viewport::draw_placed_surface_rows(
 async fn Viewport::draw_surface_rows(
   self : Viewport,
   tty : @tty.Tty,
-  surface : Surface,
+  surface : @surface.Surface,
   timeout_ms~ : Int,
-) -> Surface {
+) -> @surface.Surface {
   let old_frame = self.cache.surface()
   let (old_top, old_height) = self.cache.footprint(live_top=self.top)
   // Readline-style composer ownership:
@@ -352,10 +371,14 @@ async fn Viewport::draw_surface_rows(
 }
 
 ///|
-async fn place_cursor(tty : @tty.Tty, surface : Surface, top~ : Int) -> Unit {
-  let cursor = surface.cursor
+async fn place_cursor(
+  tty : @tty.Tty,
+  surface : @surface.Surface,
+  top~ : Int,
+) -> Unit {
+  let cursor = surface.cursor()
   tty.show_cursor()
-  tty.set_cursor_position(top + cursor.row, 1 + cursor.col)
+  tty.set_cursor_position(top + cursor.row(), 1 + cursor.col())
 }
 
 ///|
@@ -367,8 +390,8 @@ async fn place_cursor(tty : @tty.Tty, surface : Surface, top~ : Int) -> Unit {
 pub async fn Viewport::replay_with_rows_before(
   self : Viewport,
   tty : @tty.Tty,
-  rows_before : Array[Line],
-  surface : Surface,
+  rows_before : Array[@surface.Line],
+  surface : @surface.Surface,
 ) -> Unit {
   tty.hide_cursor()
   tty.write(ClearScreenAndScrollback)
@@ -382,11 +405,11 @@ pub async fn Viewport::replay_with_rows_before(
     draw_surface_line_at(
       tty,
       row,
-      surface.line_at_terminal_row(row~, top=self.top, height=self.height),
+      line_at_terminal_row(surface, row~, top=self.top, height=self.height),
     )
   }
-  if bottom < self.size.rows {
-    for row in (bottom + 1)..<=self.size.rows {
+  if bottom < self.size.rows() {
+    for row in (bottom + 1)..<=self.size.rows() {
       draw_surface_line_at(tty, row, None)
     }
   }
@@ -399,7 +422,7 @@ pub async fn Viewport::replay_with_rows_before(
 pub async fn Viewport::draw(
   self : Viewport,
   tty : @tty.Tty,
-  surface : Surface,
+  surface : @surface.Surface,
   timeout_ms~ : Int,
 ) -> Unit {
   ignore(self.draw_surface_rows(tty, surface, timeout_ms~))
@@ -420,11 +443,11 @@ async fn Viewport::shift_down_for_insert(
   lines~ : Int,
 ) -> Int {
   let top = self.top
-  let space = self.size.rows - self.bottom()
+  let space = self.size.rows() - self.bottom()
   let available = if space < 0 { 0 } else { space }
   let shift = if lines < available { lines } else { available }
   if shift > 0 {
-    with_scroll_region(tty, top, self.size.rows, () => {
+    with_scroll_region(tty, top, self.size.rows(), () => {
       tty.set_cursor_position(top, 1)
       for _ in 0..<shift {
         tty.reverse_index()
@@ -445,7 +468,7 @@ async fn Viewport::shift_down_for_insert(
 async fn Viewport::insert_lines_before(
   self : Viewport,
   tty : @tty.Tty,
-  lines : Array[Line],
+  lines : Array[@surface.Line],
   cursor_row~ : Int,
 ) -> Unit {
   let scrollback_bottom = self.top - 1
@@ -482,7 +505,7 @@ async fn Viewport::insert_lines_before(
 pub async fn Viewport::insert_before(
   self : Viewport,
   tty : @tty.Tty,
-  lines : Array[Line],
+  lines : Array[@surface.Line],
 ) -> Unit {
   if self.top <= 0 || self.height <= 0 {
     self.cache = self.cache.invalidate(live_top=self.top)
@@ -495,7 +518,10 @@ pub async fn Viewport::insert_before(
     self.insert_lines_before(tty, lines, cursor_row=old_top - 1)
     if self.cache.surface() is Some(frame) {
       tty.show_cursor()
-      tty.set_cursor_position(self.top + frame.cursor.row, 1 + frame.cursor.col)
+      tty.set_cursor_position(
+        self.top + frame.cursor().row(),
+        1 + frame.cursor().col(),
+      )
     }
   }
 }

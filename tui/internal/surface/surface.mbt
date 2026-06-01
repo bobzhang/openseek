@@ -1,4 +1,12 @@
+// The render-data vocabulary shared between the UI and the terminal renderer.
+//
+// These are passive, terminal-agnostic value types describing *what* to draw:
+// styled `Span`s form a `Line`, lines plus a `Cursor` form a `Surface` (one
+// rendered frame). The `Ui` builds them from semantic state; the `viewport`
+// engine consumes them to paint a real terminal. Nothing here performs IO.
+
 ///|
+/// Terminal styling applied while a span is written.
 struct Style {
   foreground : @color.Color
   background : @color.Color
@@ -6,48 +14,23 @@ struct Style {
 } derive(Eq)
 
 ///|
+/// A string fragment with an associated style.
 struct Span {
   text : String
   style : Style
-}
+} derive(Eq)
 
 ///|
+/// One rendered row: a sequence of styled spans.
 struct Line {
   spans : Array[Span]
-}
+} derive(Eq)
 
 ///|
+/// A cursor position within a surface, as a 0-based (row, col) cell offset.
 struct Cursor {
   row : Int
   col : Int
-}
-
-///|
-fn normalize_surface_width(width : Int) -> Int {
-  if width < 1 {
-    1
-  } else {
-    width
-  }
-}
-
-///|
-fn normalize_surface_index(value : Int, max_value : Int) -> Int {
-  @clamp.int(value, min=0, max=max_value)
-}
-
-///|
-fn normalize_surface_cursor(
-  rows : Array[Line],
-  width : Int,
-  cursor : Cursor,
-) -> Cursor {
-  let max_row = if rows.length() == 0 { 0 } else { rows.length() - 1 }
-  let max_col = if width <= 1 { 0 } else { width - 1 }
-  {
-    row: normalize_surface_index(cursor.row, max_row),
-    col: normalize_surface_index(cursor.col, max_col),
-  }
 }
 
 ///|
@@ -86,8 +69,38 @@ pub fn Style::new(
 }
 
 ///|
+/// Foreground color of the style.
+pub fn Style::foreground(self : Style) -> @color.Color {
+  self.foreground
+}
+
+///|
+/// Background color of the style.
+pub fn Style::background(self : Style) -> @color.Color {
+  self.background
+}
+
+///|
+/// Whether the style underlines its text.
+pub fn Style::underline(self : Style) -> Bool {
+  self.underline
+}
+
+///|
 pub fn Span::new(text : String, style? : Style = Style::default()) -> Span {
   { text, style }
+}
+
+///|
+/// Text of the span.
+pub fn Span::text(self : Span) -> String {
+  self.text
+}
+
+///|
+/// Style of the span.
+pub fn Span::style(self : Span) -> Style {
+  self.style
 }
 
 ///|
@@ -96,47 +109,19 @@ pub fn Line::new(spans : Array[Span]) -> Line {
 }
 
 ///|
+/// The styled spans that make up the line, in order.
+pub fn Line::spans(self : Line) -> Array[Span] {
+  self.spans
+}
+
+///|
+/// The line's text content with styling stripped.
 pub fn Line::text(self : Line) -> String {
   let builder = StringBuilder()
   for span in self.spans {
     builder.write_string(span.text)
   }
   builder.to_string()
-}
-
-///|
-fn Span::same_as(self : Span, other : Span) -> Bool {
-  self.text == other.text && self.style == other.style
-}
-
-///|
-fn Line::same_as(self : Line, other : Line) -> Bool {
-  if self.spans.length() != other.spans.length() {
-    return false
-  }
-  for index, span in self.spans {
-    if other.spans.get(index) is Some(other_span) {
-      if !span.same_as(other_span) {
-        return false
-      }
-    } else {
-      return false
-    }
-  }
-  true
-}
-
-///|
-fn Line::same_optional(left : Line?, right : Line?) -> Bool {
-  if left is Some(left) {
-    if right is Some(right) {
-      left.same_as(right)
-    } else {
-      false
-    }
-  } else {
-    right is None
-  }
 }
 
 ///|
@@ -152,6 +137,34 @@ pub fn Cursor::row(self : Cursor) -> Int {
 ///|
 pub fn Cursor::col(self : Cursor) -> Int {
   self.col
+}
+
+///|
+fn normalize_surface_width(width : Int) -> Int {
+  if width < 1 {
+    1
+  } else {
+    width
+  }
+}
+
+///|
+fn normalize_surface_index(value : Int, max_value : Int) -> Int {
+  @clamp.int(value, min=0, max=max_value)
+}
+
+///|
+fn normalize_surface_cursor(
+  rows : Array[Line],
+  width : Int,
+  cursor : Cursor,
+) -> Cursor {
+  let max_row = if rows.length() == 0 { 0 } else { rows.length() - 1 }
+  let max_col = if width <= 1 { 0 } else { width - 1 }
+  {
+    row: normalize_surface_index(cursor.row, max_row),
+    col: normalize_surface_index(cursor.col, max_col),
+  }
 }
 
 ///|
@@ -176,7 +189,10 @@ pub fn Surface::cursor(self : Surface) -> Cursor {
 }
 
 ///|
-fn Surface::with_max_rows(self : Surface, max_rows : Int) -> Surface {
+/// Return the first `max_rows` rows of the surface as a new surface, preserving
+/// width and cursor. Used to fit a surface into a bounded terminal region; the
+/// caller decides the bound.
+pub fn Surface::with_max_rows(self : Surface, max_rows : Int) -> Surface {
   let row_count = if max_rows < 0 {
     0
   } else if max_rows > self.rows.length() {
@@ -198,30 +214,4 @@ pub fn Surface::line_at(self : Surface, row : Int) -> Line {
   } else {
     Line::new([])
   }
-}
-
-///|
-fn Surface::line_at_terminal_row(
-  self : Surface,
-  row~ : Int,
-  top~ : Int,
-  height~ : Int,
-) -> Line? {
-  let index = row - top
-  if index >= 0 && index < height {
-    self.rows.get(index)
-  } else {
-    None
-  }
-}
-
-///|
-fn Surface::same_terminal_cursor(
-  self : Surface,
-  other : Surface,
-  top~ : Int,
-  other_top~ : Int,
-) -> Bool {
-  top + self.cursor.row == other_top + other.cursor.row &&
-  self.cursor.col == other.cursor.col
 }

@@ -1,16 +1,6 @@
 ///|
-test "normalize_terminal_size falls back to defaults for unknown dimensions" {
-  let normalized = normalize_terminal_size({ rows: 0, cols: -3 })
-  inspect(normalized.rows, content="24")
-  inspect(normalized.cols, content="80")
-  let kept = normalize_terminal_size({ rows: 30, cols: 100 })
-  inspect(kept.rows, content="30")
-  inspect(kept.cols, content="100")
-}
-
-///|
 test "normalized_height clamps into 1..=rows" {
-  let size = { rows: 10, cols: 80 }
+  let size = @layout.TerminalSize::new(rows=10, cols=80)
   inspect(normalized_height(size, 0), content="1")
   inspect(normalized_height(size, 4), content="4")
   inspect(normalized_height(size, 99), content="10")
@@ -18,7 +8,7 @@ test "normalized_height clamps into 1..=rows" {
 
 ///|
 test "max_top_for leaves room for height and floors at row 1" {
-  let size = { rows: 10, cols: 80 }
+  let size = @layout.TerminalSize::new(rows=10, cols=80)
   inspect(max_top_for(size, 4), content="7")
   inspect(max_top_for(size, 10), content="1")
   // Live area taller than the screen still starts at row 1.
@@ -27,7 +17,7 @@ test "max_top_for leaves room for height and floors at row 1" {
 
 ///|
 test "normalized_top clamps into 1..=max_top_for" {
-  let size = { rows: 10, cols: 80 }
+  let size = @layout.TerminalSize::new(rows=10, cols=80)
   inspect(normalized_top(size, 4, 0), content="1")
   inspect(normalized_top(size, 4, 5), content="5")
   inspect(normalized_top(size, 4, 99), content="7")

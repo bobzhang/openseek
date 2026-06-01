@@ -1,5 +1,5 @@
 ///|
-fn Ui::composer_surface(self : Ui) -> @viewport.Surface {
+fn Ui::composer_surface(self : Ui) -> @surface.Surface {
   render_composer_surface(
     self.composer,
     self.activity,
@@ -29,8 +29,8 @@ async fn Ui::redraw(self : Self) -> Unit {
 /// Lay out one transcript item, prefixed with a blank separator row so items
 /// are visually spaced apart (matching the Codex TUI). The separator is plain,
 /// outside any item background block.
-fn Ui::item_rows(self : Self, doc : Doc) -> Array[@viewport.Line] {
-  let rows : Array[@viewport.Line] = [@viewport.Line::new([])]
+fn Ui::item_rows(self : Self, doc : Doc) -> Array[@surface.Line] {
+  let rows : Array[@surface.Line] = [@surface.Line::new([])]
   for row in doc.layout(width=self.viewport.cols()) {
     rows.push(row)
   }
@@ -38,8 +38,8 @@ fn Ui::item_rows(self : Self, doc : Doc) -> Array[@viewport.Line] {
 }
 
 ///|
-fn Ui::transcript_rows(self : Self) -> Array[@viewport.Line] {
-  let rows : Array[@viewport.Line] = []
+fn Ui::transcript_rows(self : Self) -> Array[@surface.Line] {
+  let rows : Array[@surface.Line] = []
   for doc in self.transcript {
     for row in self.item_rows(doc) {
       rows.push(row)

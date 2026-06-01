@@ -18,7 +18,7 @@
 ///     occupied is remembered so the next redraw clears any rows it vacates.
 priv enum FrameCache {
   Fresh
-  Drawn(Surface)
+  Drawn(@surface.Surface)
   Stale(top~ : Int, height~ : Int)
 }
 
@@ -27,7 +27,7 @@ priv enum FrameCache {
 ///
 /// Only `Drawn` carries trustworthy on-screen content; `Fresh` and `Stale` have
 /// no surface to diff against, so the next redraw rewrites every covered row.
-fn FrameCache::surface(self : FrameCache) -> Surface? {
+fn FrameCache::surface(self : FrameCache) -> @surface.Surface? {
   match self {
     Drawn(surface) => Some(surface)
     Fresh | Stale(top=_, height=_) => None

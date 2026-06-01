@@ -104,8 +104,8 @@ pub fn Style::prompt() -> Style {
 }
 
 ///|
-fn Style::to_viewport(self : Style) -> @viewport.Style {
-  @viewport.Style::new(
+fn Style::to_surface(self : Style) -> @surface.Style {
+  @surface.Style::new(
     foreground=self.foreground,
     background=self.background,
     underline=self.underline,
@@ -132,17 +132,17 @@ fn is_control_grapheme(grapheme : String) -> Bool {
 }
 
 ///|
-fn Text::wrap(self : Text, width~ : Int) -> Array[@viewport.Line] {
-  let rows : Array[@viewport.Line] = []
-  let mut spans : Array[@viewport.Span] = []
+fn Text::wrap(self : Text, width~ : Int) -> Array[@surface.Line] {
+  let rows : Array[@surface.Line] = []
+  let mut spans : Array[@surface.Span] = []
   let mut used = 0
   let width = if width < 1 { 1 } else { width }
   for span in self.spans {
-    let style = span.style.to_viewport()
+    let style = span.style.to_surface()
     for grapheme in @grapheme.grapheme_iter(span.text) {
       let text = grapheme.to_owned()
       if text == "\n" {
-        rows.push(@viewport.Line::new(spans))
+        rows.push(@surface.Line::new(spans))
         spans = []
         used = 0
       } else {
@@ -160,31 +160,31 @@ fn Text::wrap(self : Text, width~ : Int) -> Array[@viewport.Line] {
         for piece in pieces {
           let next = @unicodewidth.str_width(piece)
           if used > 0 && used + next > width {
-            rows.push(@viewport.Line::new(spans))
+            rows.push(@surface.Line::new(spans))
             spans = []
             used = 0
           }
-          spans.push(@viewport.Span::new(piece, style~))
+          spans.push(@surface.Span::new(piece, style~))
           used += next
         }
       }
     }
   }
-  rows.push(@viewport.Line::new(spans))
+  rows.push(@surface.Line::new(spans))
   rows
 }
 
 ///|
-fn Text::first_line(self : Text, width~ : Int) -> @viewport.Line {
+fn Text::first_line(self : Text, width~ : Int) -> @surface.Line {
   match self.wrap(width~).get(0) {
     Some(line) => line
-    None => @viewport.Line::new([])
+    None => @surface.Line::new([])
   }
 }
 
 ///|
-fn Doc::layout(self : Doc, width~ : Int) -> Array[@viewport.Line] {
-  let rows : Array[@viewport.Line] = []
+fn Doc::layout(self : Doc, width~ : Int) -> Array[@surface.Line] {
+  let rows : Array[@surface.Line] = []
   for text in self.texts {
     for row in text.wrap(width~) {
       rows.push(row)

@@ -52,18 +52,18 @@ fn render_queued_input_line(
   input : Input,
   index~ : Int,
   cols~ : Int,
-) -> @viewport.Line {
+) -> @surface.Line {
   let marker = "  \{index + 1}. "
   let prefix = input_prefix(input)
-  @viewport.Line::new([
-    @viewport.Span::new(marker, style=Style::dim().to_viewport()),
-    @viewport.Span::new(prefix, style=Style::prompt().to_viewport()),
-    @viewport.Span::new(
+  @surface.Line::new([
+    @surface.Span::new(marker, style=Style::dim().to_surface()),
+    @surface.Span::new(prefix, style=Style::prompt().to_surface()),
+    @surface.Span::new(
       @text.truncate_line(
         input_preview_text(input),
         cols - @text.display_width(marker) - @text.display_width(prefix),
       ),
-      style=Style::dim().to_viewport(),
+      style=Style::dim().to_surface(),
     ),
   ])
 }
@@ -72,14 +72,14 @@ fn render_queued_input_line(
 fn render_queued_inputs(
   inputs : Array[Input],
   cols~ : Int,
-) -> Array[@viewport.Line] {
-  let rows : Array[@viewport.Line] = []
+) -> Array[@surface.Line] {
+  let rows : Array[@surface.Line] = []
   if inputs.length() > 0 {
     rows.push(
-      @viewport.Line::new([
-        @viewport.Span::new(
+      @surface.Line::new([
+        @surface.Span::new(
           @text.truncate_line("queued follow-up inputs:", cols),
-          style=Style::dim().to_viewport(),
+          style=Style::dim().to_surface(),
         ),
       ]),
     )
