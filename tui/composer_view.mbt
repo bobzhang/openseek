@@ -65,6 +65,9 @@ fn render_composer_surface(
     rows.push(activity.first_line(width=cols))
     rows.push(@viewport.Line::new([]))
   }
+  // Lay the composer out for the current width so soft-wrapping, scrolling, and
+  // cursor placement below all agree with what we draw.
+  composer.resize(cols~)
   let composer_top = rows.length()
   rows.push(render_separator_line(cols~))
   for row in 0..<composer.visible_text_rows() {
@@ -83,7 +86,7 @@ fn render_composer_surface(
     rows~,
     cursor=@viewport.Cursor::new(
       row=composer_top + 1 + composer.cursor_row(),
-      col=composer.cursor_offset(cols),
+      col=composer.cursor_offset(),
     ),
   )
 }

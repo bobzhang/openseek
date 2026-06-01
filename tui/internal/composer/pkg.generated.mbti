@@ -12,9 +12,9 @@ pub fn Mode::is_input(Self) -> Bool
 pub fn Mode::is_shell(Self) -> Bool
 
 type Model
-pub fn Model::cursor_at_first_line(Self) -> Bool
-pub fn Model::cursor_at_last_line(Self) -> Bool
-pub fn Model::cursor_offset(Self, Int) -> Int
+pub fn Model::cursor_at_first_visual_row(Self) -> Bool
+pub fn Model::cursor_at_last_visual_row(Self) -> Bool
+pub fn Model::cursor_offset(Self) -> Int
 pub fn Model::cursor_row(Self) -> Int
 pub fn Model::delete_after(Self) -> Unit
 pub fn Model::delete_before(Self) -> Unit
@@ -32,6 +32,7 @@ pub fn Model::move_vertical(Self, Int) -> Unit
 pub fn Model::new(max_text_rows? : Int) -> Self
 pub fn Model::replace(Self, String, mode~ : Mode) -> Unit
 pub fn Model::reset(Self) -> Unit
+pub fn Model::resize(Self, cols~ : Int) -> Unit
 pub fn Model::text(Self) -> String
 pub fn Model::visible_line(Self, Int) -> String
 pub fn Model::visible_text_rows(Self) -> Int

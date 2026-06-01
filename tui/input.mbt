@@ -68,7 +68,7 @@ async fn Ui::recall_next_history(self : Self) -> Unit {
 
 ///|
 async fn Ui::move_up_or_recall_history(self : Self) -> Unit {
-  if self.composer.cursor_at_first_line() {
+  if self.composer.cursor_at_first_visual_row() {
     self.recall_previous_history()
   } else {
     self.composer.move_vertical(-1)
@@ -78,7 +78,7 @@ async fn Ui::move_up_or_recall_history(self : Self) -> Unit {
 
 ///|
 async fn Ui::move_down_or_recall_history(self : Self) -> Unit {
-  if self.composer.cursor_at_last_line() {
+  if self.composer.cursor_at_last_visual_row() {
     self.recall_next_history()
   } else {
     self.composer.move_vertical(1)

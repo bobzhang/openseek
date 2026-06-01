@@ -4,10 +4,9 @@ test "model starts at end and keeps cursor visible" {
   let point = model.cursor_point()
   inspect(point.line, content="2")
   inspect(point.grapheme_column, content="1")
-  inspect(point.display_column, content="1")
   inspect(model.visible_text_rows(), content="3")
-  inspect(model.view_start, content="0")
   inspect(model.cursor_row(), content="2")
+  inspect(model.view_start, content="0")
 }
 
 ///|
@@ -17,11 +16,11 @@ test "model up down moves cursor and visible line window" {
   inspect(model.view_start, content="0")
   model.move_vertical(-1)
   inspect(model.cursor_point().line, content="1")
-  inspect(model.cursor_point().display_column, content="3")
+  inspect(model.cursor_point().grapheme_column, content="3")
   inspect(model.view_start, content="0")
   model.move_vertical(-1)
   inspect(model.cursor_point().line, content="0")
-  inspect(model.cursor_point().display_column, content="3")
+  inspect(model.cursor_point().grapheme_column, content="3")
   inspect(model.view_start, content="0")
   model.move_vertical(1)
   inspect(model.cursor_point().line, content="1")
@@ -35,8 +34,8 @@ test "model up down moves cursor and visible line window" {
 test "model scrolls visible window after max rows" {
   let model = Model::from_text("a\nb\nc\nd\ne")
   inspect(model.visible_text_rows(), content="4")
-  inspect(model.view_start, content="1")
   inspect(model.cursor_row(), content="3")
+  inspect(model.view_start, content="1")
   model.move_vertical(-3)
   inspect(model.cursor_point().line, content="1")
   inspect(model.view_start, content="1")
@@ -56,7 +55,7 @@ test "model inserts and deletes at cursor" {
   deleted_before.move_left()
   deleted_before.delete_before()
   inspect(deleted_before.text, content="ab")
-  inspect(deleted_before.cursor_point().display_column, content="1")
+  inspect(deleted_before.cursor_point().grapheme_column, content="1")
   let deleted_after = Model::from_text("ab")
   deleted_after.move_home()
   deleted_after.delete_after()
@@ -83,10 +82,10 @@ test "model home end moves within logical line" {
   let model = Model::from_text("ab\ncd")
   model.move_home()
   inspect(model.cursor_point().line, content="1")
-  inspect(model.cursor_point().display_column, content="0")
+  inspect(model.cursor_point().grapheme_column, content="0")
   model.move_end()
   inspect(model.cursor_point().line, content="1")
-  inspect(model.cursor_point().display_column, content="2")
+  inspect(model.cursor_point().grapheme_column, content="2")
 }
 
 ///|
@@ -95,13 +94,13 @@ test "model kills before and after cursor within logical line" {
   before.kill_before()
   inspect(before.text, content="ab\n")
   inspect(before.cursor_point().line, content="1")
-  inspect(before.cursor_point().display_column, content="0")
+  inspect(before.cursor_point().grapheme_column, content="0")
   let after = Model::from_text("ab\ncd")
   after.move_home()
   after.kill_after()
   inspect(after.text, content="ab\n")
   inspect(after.cursor_point().line, content="1")
-  inspect(after.cursor_point().display_column, content="0")
+  inspect(after.cursor_point().grapheme_column, content="0")
 }
 
 ///|
@@ -128,17 +127,70 @@ test "input prefix marks only the first logical input line" {
 
 ///|
 test "input cursor offset accounts for prompt and display width" {
-  inspect(Model::new().cursor_offset(80), content="2")
-  inspect(Model::from_text("abc").cursor_offset(80), content="5")
-  inspect(Model::from_text("你好").cursor_offset(80), content="6")
+  inspect(Model::new().cursor_offset(), content="2")
+  inspect(Model::from_text("abc").cursor_offset(), content="5")
+  inspect(Model::from_text("你好").cursor_offset(), content="6")
   let moved_left = Model::from_text("abc")
   moved_left.move_left()
-  inspect(moved_left.cursor_offset(80), content="4")
-  inspect(Model::from_text("a\nb").cursor_offset(80), content="3")
-  inspect(Model::from_text("abcdef").cursor_offset(5), content="5")
+  inspect(moved_left.cursor_offset(), content="4")
+  inspect(Model::from_text("a\nb").cursor_offset(), content="3")
+  // A long line wrapped to a content width of 3 puts the cursor at the end of
+  // its second wrapped row: prompt (2) + display width of "def" (3).
+  let narrow = Model::from_text("abcdef")
+  narrow.resize(cols=5)
+  inspect(narrow.cursor_offset(), content="5")
   let shell = Model::new()
   shell.insert_user_text("!abc")
-  inspect(shell.cursor_offset(80), content="5")
+  inspect(shell.cursor_offset(), content="5")
+}
+
+///|
+test "long line soft-wraps across visible rows" {
+  // cols 7 leaves a content width of 5, so "abcdefghij" wraps to two rows.
+  let model = Model::from_text("abcdefghij")
+  model.resize(cols=7)
+  inspect(model.visible_text_rows(), content="2")
+  inspect(model.visible_line(0), content="abcde")
+  inspect(model.visible_line(1), content="fghij")
+  // Only the first wrapped row keeps the prompt; the continuation is indented.
+  inspect(model.input_prefix(0), content="> ")
+  inspect(model.input_prefix(1), content="  ")
+  // The cursor sits at the end of the second wrapped row.
+  inspect(model.cursor_row(), content="1")
+  inspect(model.cursor_offset(), content="7")
+}
+
+///|
+test "soft-wrapped line scrolls when it exceeds max rows" {
+  // cols 3 leaves a content width of 1, so "abcdef" wraps to six rows and the
+  // four-row window scrolls to keep the trailing cursor visible.
+  let model = Model::from_text("abcdef", max_text_rows=4)
+  model.resize(cols=3)
+  inspect(model.visible_text_rows(), content="4")
+  inspect(model.cursor_row(), content="3")
+  inspect(model.view_start, content="2")
+  inspect(model.visible_line(0), content="c")
+  inspect(model.visible_line(3), content="f")
+}
+
+///|
+test "vertical movement steps through wrapped rows of one logical line" {
+  // content width 5 splits "abcdefghij" into "abcde" / "fghij"; the cursor
+  // starts at the end of the second wrapped row.
+  let model = Model::from_text("abcdefghij")
+  model.resize(cols=7)
+  inspect(model.cursor_row(), content="1")
+  // Up moves within the single logical line to the first wrapped row, landing on
+  // the wrap boundary so it renders at the end of that row (offset 2 + 5).
+  model.move_vertical(-1)
+  inspect(model.cursor_row(), content="0")
+  inspect(model.cursor_point().line, content="0")
+  inspect(model.cursor_offset(), content="7")
+  inspect(model.cursor_at_first_visual_row(), content="true")
+  // Down returns to the end of the second wrapped row.
+  model.move_vertical(1)
+  inspect(model.cursor_row(), content="1")
+  inspect(model.cursor_offset(), content="7")
 }
 
 ///|
@@ -154,14 +206,14 @@ test "model replace restores text mode and cursor" {
 }
 
 ///|
-test "model reports cursor vertical history boundaries" {
+test "model reports cursor visual-row boundaries" {
   let model = Model::from_text("one\ntwo")
-  assert_false(model.cursor_at_first_line())
-  assert_true(model.cursor_at_last_line())
+  assert_false(model.cursor_at_first_visual_row())
+  assert_true(model.cursor_at_last_visual_row())
   model.move_home()
-  assert_false(model.cursor_at_first_line())
-  assert_true(model.cursor_at_last_line())
+  assert_false(model.cursor_at_first_visual_row())
+  assert_true(model.cursor_at_last_visual_row())
   model.move_vertical(-1)
-  assert_true(model.cursor_at_first_line())
-  assert_false(model.cursor_at_last_line())
+  assert_true(model.cursor_at_first_visual_row())
+  assert_false(model.cursor_at_last_visual_row())
 }
