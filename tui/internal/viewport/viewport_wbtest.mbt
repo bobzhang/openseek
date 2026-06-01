@@ -11,15 +11,6 @@ test "viewport starts undrawn and normalizes stored geometry" {
 }
 
 ///|
-test "viewport growth uses blank space below before moving upward" {
-  let viewport = Viewport::new(height=5)
-  viewport.set_size(@layout.TerminalSize::new(rows=12, cols=80))
-  viewport.set_geometry(top=8, height=3)
-  inspect(viewport.next_top(height=5), content="8")
-  inspect(viewport.next_top(height=6), content="7")
-}
-
-///|
 test "viewport remembers stale frame footprint after resize invalidates frame" {
   let viewport = Viewport::new(height=4)
   viewport.set_size(@layout.TerminalSize::new(rows=10, cols=80))

@@ -76,14 +76,6 @@ fn Viewport::height(self : Viewport) -> Int {
 }
 
 ///|
-fn visible_height(
-  size : @layout.TerminalSize,
-  surface : @surface.Surface,
-) -> Int {
-  normalized_height(size, surface.height())
-}
-
-///|
 pub fn Viewport::cols(self : Viewport) -> Int {
   self.size.cols()
 }
@@ -119,40 +111,39 @@ fn Viewport::set_geometry(self : Viewport, top~ : Int, height~ : Int) -> Unit {
 }
 
 ///|
-/// Where the live area should start on the very first draw.
+/// Choose and store where the live area sits for `surface` at the current size.
 ///
-/// Anchor it at the row the cursor currently sits on (where the shell left it
-/// when the app started) so committed output above stays put. But when the
-/// cursor is near the bottom — say row 23 of 24 while the live area needs 7 rows
-/// — that row leaves too little room beneath it, so `normalized_top` raises
-/// `top` to `max_top_for` (here 18) and `scroll_scrollback_up_for_growth` pushes
-/// the rows above into scrollback to open the space. When the cursor position
-/// can't be queried, assume the worst case (no room below) and start at
-/// `max_top_for`.
-async fn Viewport::initial_top(
+/// The height is the surface's, clamped to the screen. The start row depends on
+/// whether the area has been placed yet:
+///
+///   - First draw (`geometry is None`): anchor at the row the cursor currently
+///     sits on — where the shell left it when the app started — so committed
+///     output above stays put. When the cursor is near the bottom (say row 23 of
+///     24 while the area needs 7 rows) it leaves too little room beneath it, so
+///     `normalized_top` raises `top` to `max_top_for` (here 18) and
+///     `scroll_scrollback_up_for_growth` later pushes the rows above into
+///     scrollback. When the cursor position can't be queried, assume the worst
+///     case (no room below) and start at `max_top_for`.
+///   - Redraw: hold the previous `top`. Readline-style ownership grows into the
+///     blank rows below first and only pushes upward once the taller area would
+///     overflow the screen bottom; shrinking holds `top` too. Clamping the old
+///     top to `max_top_for` is exactly that — it keeps `top` put while the area
+///     fits and raises it by just enough when it would not.
+async fn Viewport::place(
   self : Viewport,
   tty : @tty.Tty,
-  height~ : Int,
+  surface~ : @surface.Surface,
   timeout_ms~ : Int,
-) -> Int {
-  match tty.query_cursor_position(timeout_ms~) {
-    Some(position) => normalized_top(self.size, height, position.row)
-    None => max_top_for(self.size, height)
+) -> Unit {
+  let height = normalized_height(self.size, surface.height())
+  let top = if self.geometry is Some(_) {
+    normalized_top(self.size, height, self.top())
+  } else if tty.query_cursor_position(timeout_ms~) is Some(position) {
+    normalized_top(self.size, height, position.row)
+  } else {
+    max_top_for(self.size, height)
   }
-}
-
-///|
-/// Where the live area should start on the next redraw for a new `height`.
-///
-/// Readline-style ownership: growth first consumes blank rows *below* the live
-/// area, holding `top` fixed, and only pushes upward — scrolling committed text
-/// into scrollback — once the taller area would overflow the screen bottom;
-/// shrinking holds `top` too. `normalized_top` already encodes exactly this:
-/// clamping the current top to `max_top_for` keeps it put while it fits and
-/// raises it by just enough when it would not, so no extra growth handling is
-/// needed.
-fn Viewport::next_top(self : Viewport, height~ : Int) -> Int {
-  normalized_top(self.size, height, self.top())
+  self.set_geometry(top~, height~)
 }
 
 ///|
@@ -370,42 +361,6 @@ async fn Viewport::draw_placed_surface_rows(
 }
 
 ///|
-async fn Viewport::draw_surface_rows(
-  self : Viewport,
-  tty : @tty.Tty,
-  surface : @surface.Surface,
-  timeout_ms~ : Int,
-) -> @surface.Surface {
-  let old_frame = self.cache.surface()
-  let old = self.cache.footprint(live_top=self.top())
-  // Readline-style composer ownership:
-  //
-  //   - The first redraw anchors at the current cursor position.
-  //   - Growth uses blank space below first, then expands upward and scrolls
-  //     committed output above the composer into terminal scrollback.
-  //   - Shrink keeps `top` stable and clears rows released below the live area.
-  let next_height = visible_height(self.size, surface)
-  let new_top = if old is None {
-    self.initial_top(tty, height=next_height, timeout_ms~)
-  } else {
-    self.next_top(height=next_height)
-  }
-  self.set_geometry(top=new_top, height=next_height)
-  let surface = surface.with_max_rows(self.height())
-  let new_top = self.top()
-  scroll_scrollback_up_for_growth(tty, old, new_top~)
-  self.draw_placed_surface_rows(
-    tty,
-    old_frame,
-    old,
-    new_frame=surface,
-    new_top~,
-  )
-  self.cache = Drawn(surface)
-  surface
-}
-
-///|
 async fn place_cursor(
   tty : @tty.Tty,
   surface : @surface.Surface,
@@ -432,8 +387,8 @@ pub async fn Viewport::replay_with_rows_before(
   tty.write(ClearScreenAndScrollback)
   tty.write(EnableAutoWrap)
   self.cache = Fresh
-  let next_height = visible_height(self.size, surface)
-  self.set_geometry(top=1, height=next_height)
+  // `set_geometry` clamps the height to the screen itself.
+  self.set_geometry(top=1, height=surface.height())
   let surface = surface.with_max_rows(self.height())
   let bottom = self.bottom()
   for row in self.top()..<=bottom {
@@ -460,7 +415,22 @@ pub async fn Viewport::draw(
   surface : @surface.Surface,
   timeout_ms~ : Int,
 ) -> Unit {
-  ignore(self.draw_surface_rows(tty, surface, timeout_ms~))
+  // The previous frame's surface (for row diffing) and footprint (for clearing
+  // vacated rows) must be read before `place` overwrites the geometry.
+  let old_frame = self.cache.surface()
+  let old = self.cache.footprint(live_top=self.top())
+  self.place(tty, surface~, timeout_ms~)
+  let surface = surface.with_max_rows(self.height())
+  let new_top = self.top()
+  scroll_scrollback_up_for_growth(tty, old, new_top~)
+  self.draw_placed_surface_rows(
+    tty,
+    old_frame,
+    old,
+    new_frame=surface,
+    new_top~,
+  )
+  self.cache = Drawn(surface)
 }
 
 ///|
