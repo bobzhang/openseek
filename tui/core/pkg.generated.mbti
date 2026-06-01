@@ -1,0 +1,54 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/tui/core"
+
+import {
+  "bobzhang/openseek/tui/doc",
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) enum Event {
+  Queue(Input)
+  Steer(Input)
+  Interrupt
+  Quit
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Input {
+  Prompt(String)
+  Command(String)
+} derive(Eq, @debug.Debug)
+pub fn Input::prefix(Self) -> String
+pub fn Input::text(Self) -> String
+pub impl @doc.ToDoc for Input
+
+pub struct ToolCall {
+  title : @doc.Text
+  status : ToolStatus?
+  details : Array[@doc.Text]
+}
+pub fn ToolCall::ToolCall(@doc.Text, status? : ToolStatus, details? : Array[@doc.Text]) -> Self
+
+pub(all) enum ToolStatus {
+  InProgress
+  Completed
+  Failed
+  Declined
+} derive(Eq, @debug.Debug)
+
+pub(all) enum TranscriptItem {
+  Input(Input)
+  Response(String)
+  Reasoning(String)
+  ToolCall(ToolCall)
+  Error(String)
+}
+pub impl @doc.ToDoc for TranscriptItem
+
+// Type aliases
+
+// Traits
