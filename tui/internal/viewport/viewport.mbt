@@ -264,21 +264,17 @@ async fn scroll_scrollback_up_for_growth(
 
 ///|
 /// Paint the first frame: draw every row of the new area (there is nothing on
-/// screen yet to diff against) and place the cursor.
-async fn Viewport::enter_placed_surface_rows(
-  self : Viewport,
+/// screen yet to diff against) and place the cursor. The area comes straight
+/// from `set_geometry`, so it already fits the screen — no span clamping needed.
+async fn enter_placed_surface_rows(
   tty : @tty.Tty,
   new_frame~ : @surface.Surface,
   new_top~ : Int,
 ) -> Unit {
   let new_height = new_frame.height()
-  let (draw_top, draw_bottom) = calculate_enter_span(
-    { top: new_top, height: new_height },
-    screen_rows=self.size.rows(),
-  )
-  guard draw_top <= draw_bottom else { return }
+  guard new_height > 0 else { return }
   tty.hide_cursor()
-  for row in draw_top..<=draw_bottom {
+  for row in new_top..<(new_top + new_height) {
     draw_surface_line_at(
       tty,
       row,
@@ -419,7 +415,7 @@ pub async fn Viewport::enter(
   }
   self.set_geometry(top~, height~)
   let surface = surface.with_max_rows(self.height())
-  self.enter_placed_surface_rows(tty, new_frame=surface, new_top=self.top())
+  enter_placed_surface_rows(tty, new_frame=surface, new_top=self.top())
   self.cache = Drawn(surface)
 }
 

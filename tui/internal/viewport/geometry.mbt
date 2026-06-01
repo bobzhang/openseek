@@ -63,20 +63,6 @@ fn clamp_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
 }
 
 ///|
-/// The terminal-row interval `[top, bottom]` to repaint on the first draw: just
-/// the `new` live area, clamped onto the screen. There is nothing on screen yet,
-/// so nothing above or below needs clearing.
-fn calculate_enter_span(new : Geometry, screen_rows~ : Int) -> (Int, Int) {
-  let top = if new.top < 1 { 1 } else { new.top }
-  let bottom = if new.bottom() > screen_rows {
-    screen_rows
-  } else {
-    new.bottom()
-  }
-  (top, bottom)
-}
-
-///|
 /// The terminal-row interval `[top, bottom]` a redraw must repaint: the union of
 /// the `new` live area and the previous frame's footprint `old` — so rows the
 /// live area vacated (by shrinking or moving up) get cleared, not just the new

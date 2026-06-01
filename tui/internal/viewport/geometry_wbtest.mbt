@@ -36,19 +36,6 @@ fn span_str(span : (Int, Int)) -> String {
 }
 
 ///|
-test "calculate_enter_span repaints just the new area, clamped" {
-  inspect(
-    span_str(calculate_enter_span({ top: 3, height: 4 }, screen_rows=12)),
-    content="3..6",
-  )
-  // Clamped to the screen bottom.
-  inspect(
-    span_str(calculate_enter_span({ top: 10, height: 5 }, screen_rows=12)),
-    content="10..12",
-  )
-}
-
-///|
 test "calculate_redraw_span unions the old and new live-area footprints" {
   // Same placement: repaint just that region.
   inspect(
