@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "bobzhang/openseek/tui/internal/layout"
+package "bobzhang/openseek/tui/internal/terminal_size"
 
 // Values
 

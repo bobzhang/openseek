@@ -2,17 +2,17 @@
 package "bobzhang/openseek/tui/internal/geometry"
 
 import {
-  "bobzhang/openseek/tui/internal/layout",
+  "bobzhang/openseek/tui/internal/terminal_size",
 }
 
 // Values
-pub fn calculate_max_top(@layout.TerminalSize, Int) -> Int
+pub fn calculate_max_top(@terminal_size.TerminalSize, Int) -> Int
 
 pub fn calculate_redraw_span(Geometry, Geometry, screen_rows~ : Int, old_content_unknown~ : Bool) -> (Int, Int)
 
-pub fn clamp_height(@layout.TerminalSize, Int) -> Int
+pub fn clamp_height(@terminal_size.TerminalSize, Int) -> Int
 
-pub fn clamp_top(@layout.TerminalSize, Int, Int) -> Int
+pub fn clamp_top(@terminal_size.TerminalSize, Int, Int) -> Int
 
 // Errors
 

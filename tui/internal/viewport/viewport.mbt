@@ -21,7 +21,7 @@ const ClearScreenAndScrollback : String = "\u001b[r\u001b[0m\u001b[H\u001b[2J\u0
 
 ///|
 struct Viewport {
-  mut size : @layout.TerminalSize
+  mut size : @terminal_size.TerminalSize
   // The live area's placement, or `None` before it has been drawn. Matching
   // readline's model, output can be written before the input area exists; the
   // first redraw anchors the area at the current terminal cursor and sets this.
@@ -35,7 +35,7 @@ struct Viewport {
 ///|
 pub fn Viewport::new(height~ : Int) -> Viewport {
   let _ = height
-  { size: @layout.TerminalSize::default(), geometry: None, cache: Fresh }
+  { size: @terminal_size.TerminalSize::default(), geometry: None, cache: Fresh }
 }
 
 ///|
@@ -70,7 +70,10 @@ fn Viewport::bottom(self : Viewport) -> Int {
 }
 
 ///|
-fn Viewport::set_size(self : Viewport, size : @layout.TerminalSize) -> Unit {
+fn Viewport::set_size(
+  self : Viewport,
+  size : @terminal_size.TerminalSize,
+) -> Unit {
   if size.rows() != self.size.rows() || size.cols() != self.size.cols() {
     // Terminal resize can reflow rows away from their old physical footprint.
     // Resize rebuilds from semantic rows, so the cached frame must be dropped.
@@ -94,9 +97,9 @@ fn Viewport::set_geometry(self : Viewport, top~ : Int, height~ : Int) -> Unit {
 ///|
 pub fn Viewport::refresh_size(self : Viewport, tty : @tty.Tty) -> Unit {
   let size = try tty.window_size() catch {
-    _ => @layout.TerminalSize::default()
+    _ => @terminal_size.TerminalSize::default()
   } noraise {
-    size => @layout.TerminalSize::new(rows=size.rows, cols=size.cols)
+    size => @terminal_size.TerminalSize::new(rows=size.rows, cols=size.cols)
   }
   self.set_size(size)
 }

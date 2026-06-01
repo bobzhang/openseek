@@ -18,7 +18,7 @@
 //
 // Every function here is total and side-effect free: results are clamped into a
 // drawable range so the viewport never has to re-validate geometry. They take an
-// already-normalized `@layout.TerminalSize`, so screen dimensions are always
+// already-normalized `@terminal_size.TerminalSize`, so screen dimensions are always
 // positive; only the app-chosen `top`/`height` are clamped here.
 
 ///|
@@ -60,7 +60,7 @@ pub fn Geometry::bottom(self : Geometry) -> Int {
 
 ///|
 /// Clamp a desired live-area height into `1 ..= size.rows()`.
-pub fn clamp_height(size : @layout.TerminalSize, height : Int) -> Int {
+pub fn clamp_height(size : @terminal_size.TerminalSize, height : Int) -> Int {
   height.clamp(min=1, max=size.rows())
 }
 
@@ -79,7 +79,10 @@ pub fn clamp_height(size : @layout.TerminalSize, height : Int) -> Int {
 /// - 1 = 24` sits exactly on the screen bottom. `height` is pre-clamped to
 /// `<= rows` by `clamp_height`, so the bound is always `>= 1` and the clamp
 /// range stays non-empty.
-pub fn calculate_max_top(size : @layout.TerminalSize, height : Int) -> Int {
+pub fn calculate_max_top(
+  size : @terminal_size.TerminalSize,
+  height : Int,
+) -> Int {
   let top = size.rows() - height + 1
   if top < 1 {
     1
@@ -94,7 +97,11 @@ pub fn calculate_max_top(size : @layout.TerminalSize, height : Int) -> Int {
 /// The desired `top` comes from outside terminal geometry — the queried cursor
 /// row on the first draw, or the previous frame's `top` afterwards — so it can
 /// sit too low to fit the live area below it; clamping raises it just enough.
-pub fn clamp_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
+pub fn clamp_top(
+  size : @terminal_size.TerminalSize,
+  height : Int,
+  top : Int,
+) -> Int {
   top.clamp(min=1, max=calculate_max_top(size, height))
 }
 

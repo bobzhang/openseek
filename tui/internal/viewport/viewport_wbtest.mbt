@@ -1,7 +1,7 @@
 ///|
 test "viewport starts undrawn and normalizes stored geometry" {
   let viewport = Viewport::new(height=20)
-  viewport.set_size(@layout.TerminalSize::new(rows=8, cols=80))
+  viewport.set_size(@terminal_size.TerminalSize::new(rows=8, cols=80))
   inspect(viewport.top(), content="0")
   inspect(viewport.height(), content="0")
   inspect(viewport.cache is Fresh, content="true")
@@ -13,7 +13,7 @@ test "viewport starts undrawn and normalizes stored geometry" {
 ///|
 test "viewport remembers stale frame footprint after resize invalidates frame" {
   let viewport = Viewport::new(height=4)
-  viewport.set_size(@layout.TerminalSize::new(rows=10, cols=80))
+  viewport.set_size(@terminal_size.TerminalSize::new(rows=10, cols=80))
   viewport.set_geometry(top=6, height=4)
   viewport.cache = Drawn(
     @surface.Surface::new(
@@ -28,7 +28,7 @@ test "viewport remembers stale frame footprint after resize invalidates frame" {
       cursor=@surface.Cursor::new(row=1, col=0),
     ),
   )
-  viewport.set_size(@layout.TerminalSize::new(rows=8, cols=40))
+  viewport.set_size(@terminal_size.TerminalSize::new(rows=8, cols=40))
   let (stale_top, stale_height) = match viewport.cache {
     Stale(top~, height~) => (top, height)
     _ => (-1, -1)

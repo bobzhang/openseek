@@ -1,5 +1,5 @@
 import {
-  "bobzhang/openseek/tui/internal/layout",
+  "bobzhang/openseek/tui/internal/terminal_size",
 }
 
 supported_targets = "native"
