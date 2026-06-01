@@ -10,11 +10,17 @@ pub fn default_system_prompt() -> String
 
 pub fn default_system_prompt_for_model(@deepseek.Model) -> String
 
-pub async fn run(String, @deepseek.Model, String, max_steps? : Int, system_prompt_text? : String) -> Unit
+pub async fn run(String, @deepseek.Model, String, max_steps? : Int, system_prompt_text? : String, log_format? : LogFormat) -> Unit
 
 // Errors
 
 // Types and methods
+pub(all) enum LogFormat {
+  Text
+  Jsonl
+}
+pub fn LogFormat::parse(String) -> Self raise
+pub fn LogFormat::to_string(Self) -> String
 
 // Type aliases
 

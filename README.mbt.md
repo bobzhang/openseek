@@ -14,7 +14,7 @@ entry point so request encoding can be tested without network access.
 | `bobzhang/openseek/logger` | Native-only async logger with severity-filtered `<+` sinks. | `logger/README.mbt.md` |
 | `bobzhang/openseek/agent_tool` | Tool registry, executor, output, and control-action types. | `agent_tool/README.mbt.md` |
 | `bobzhang/openseek/agent` | Native-only OpenSeek agent loop and local tool dispatch. | `agent/README.mbt.md` |
-| `bobzhang/openseek/cmd/main` | Native-only command-line entry point. | `cmd/main/README.md` |
+| `bobzhang/openseek/cmd/openseek` | Native-only command-line entry point. | `cmd/openseek/README.md` |
 | `bobzhang/openseek/testkit/filesystem` | JSON-backed virtual filesystem for tests and eval fixtures. | `testkit/filesystem/README.mbt.md` |
 | `bobzhang/openseek/eval/report` | Shared Markdown/JSON report primitive for deterministic and model evals. | `eval/report/README.mbt.md` |
 | `bobzhang/openseek/eval/tool_harness` | Deterministic host-side harness that dispatches every built-in tool. | `eval/tool_harness/README.mbt.md` |
@@ -50,19 +50,21 @@ filesystem, and process APIs.
 
 ## Agent CLI
 
-The `cmd/main` package is the CLI entry point. It parses arguments and runs the
-agent package. The agent sends DeepSeek native function tools and supports
+The `cmd/openseek` package is the CLI entry point. It parses arguments and runs
+the agent package. The agent sends DeepSeek native function tools and supports
 seven local tools: `shell`, `read`, `edit`, `write`, `moon_check`, `moon_cmd`,
 and `finish`.
 
 ```bash
 export DEEPSEEK=sk-...
-moon run cmd/main -- "inspect this project and finish with a short summary"
+moon run cmd/openseek -- "inspect this project and finish with a short summary"
 ```
 
 `DEEPSEEK_MODEL` is optional and defaults to `deepseek-v4-pro`.
 `OPENSEEK_MAX_STEPS` is optional and defaults to `1000`; pass `--max-steps` on
-the CLI to override it for one run.
+the CLI to override it for one run. `OPENSEEK_LOG_FORMAT` is optional and
+defaults to `jsonl`; pass `--log-format text` for the legacy human-readable
+transcript.
 
 See each package README for API boundaries, examples, and package-specific test
 notes.
@@ -81,6 +83,11 @@ The deterministic tool harness under `eval/tool_harness` exercises each built-in
 tool through `agent_tool.execute_tool_call` with temporary fixtures. It is meant
 for ordinary `moon test` coverage of tool wiring and observable side effects,
 not for model quality scoring.
+
+The real-world CLI smoke tests live in `tests/cram/realworld.md`. They are
+executable documentation for `moon cram` on MoonBit nightly and use `DEEPSEEK`
+from a temporary `.deepseek_env` file in the cram work directory; without that
+file, they exercise a documented skip path.
 
 The `testkit/filesystem` package provides reusable JSON-backed text fixtures for
 mock tests and evals. It materializes flat path-to-content JSON objects under a

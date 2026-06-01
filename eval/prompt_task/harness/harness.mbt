@@ -118,12 +118,14 @@ async fn run_trial(
   let task = task_template.replace_all(old="{{WORKSPACE}}", new=real_workspace)
   let args = [
     "run",
-    "cmd/main",
+    "cmd/openseek",
     "--",
     "--max-steps",
     config.max_steps.to_string(),
     "--model",
     config.model.to_string(),
+    "--log-format",
+    "text",
   ]
   if config.system_prompt_file != "" {
     args.push("--system-prompt-file")

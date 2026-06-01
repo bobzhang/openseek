@@ -23,10 +23,11 @@ The package depends on:
 - `default_system_prompt()`: return the base built-in prompt.
 - `default_system_prompt_for_model(model)`: return the model-specific built-in
   prompt from the prompt package.
-- `run(api_key, model, task, max_steps?, system_prompt_text?)`: run the agent
-  loop for one natural-language task. `system_prompt_text` defaults to the
-  model-specific built-in prompt so callers can run prompt experiments without
-  rebuilding the package.
+- `run(api_key, model, task, max_steps?, system_prompt_text?, log_format?)`:
+  run the agent loop for one natural-language task. `system_prompt_text`
+  defaults to the model-specific built-in prompt so callers can run prompt
+  experiments without rebuilding the package. `log_format` defaults to `jsonl`;
+  use `text` for the legacy human-readable transcript.
 
 `run` creates a DeepSeek client, starts a conversation with a system prompt and
 user task, sends native function tool definitions on each turn, executes any
@@ -102,6 +103,9 @@ improving:
 - Long runs should be observable while they are running. The agent writes loop
   logs through `moonbitlang/async/stdio` instead of `println` so piped runs
   such as `2>&1 | tee run.log` receive step output promptly.
+- JSONL logs are the default and are intended for `jq` processing during or
+  after a run. Use `--log-format text` when a human-readable transcript is more
+  useful than structured records.
 - Real workspace commands need a first-class working directory. The `shell`
   tool now accepts optional `cwd` to avoid repeated ad hoc `cd` command strings.
 - The default step limit is 1000, and the CLI can override it with
