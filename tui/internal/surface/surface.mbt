@@ -55,11 +55,8 @@ struct Surface {
 }
 
 ///|
-pub fn Style::default() -> Style {
-  { foreground: Default, background: Default, underline: false }
-}
-
-///|
+/// Build a style. With no arguments, the unstyled default (terminal default
+/// colors, no underline).
 pub fn Style::new(
   foreground? : @color.Color = Default,
   background? : @color.Color = Default,
@@ -87,7 +84,7 @@ pub fn Style::underline(self : Style) -> Bool {
 }
 
 ///|
-pub fn Span::new(text : String, style? : Style = Style::default()) -> Span {
+pub fn Span::new(text : String, style? : Style = Style::new()) -> Span {
   { text, style }
 }
 
