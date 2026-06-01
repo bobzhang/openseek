@@ -149,24 +149,21 @@ fn contains_guarded_moon_fragment(cmd : String) -> Bool {
 
 ///|
 async fn shell(input : @decode.ShellInput) -> @agent_tool.ToolAction {
-  match input.cwd {
-    Some(cwd) => {
-      let exists = @fs.exists(cwd)
-      if !exists {
-        return @agent_tool.ToolAction::respond(
-          "error: cwd does not exist: \{cwd}",
-          is_error=true,
-        )
-      }
-      let kind = @fs.kind(cwd)
-      if kind != Directory {
-        return @agent_tool.ToolAction::respond(
-          "error: cwd is not a directory: \{cwd}",
-          is_error=true,
-        )
-      }
+  if input.cwd is Some(cwd) {
+    let exists = @fs.exists(cwd)
+    if !exists {
+      return @agent_tool.ToolAction::respond(
+        "error: cwd does not exist: \{cwd}",
+        is_error=true,
+      )
     }
-    None => ()
+    let kind = @fs.kind(cwd)
+    if kind != Directory {
+      return @agent_tool.ToolAction::respond(
+        "error: cwd is not a directory: \{cwd}",
+        is_error=true,
+      )
+    }
   }
   let (code, output) = match input.cwd {
     Some(cwd) => @process.collect_output_merged("sh", ["-c", input.cmd], cwd~)
