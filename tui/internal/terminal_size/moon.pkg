@@ -1,1 +1,3 @@
 supported_targets = "native"
+
+warnings = "+missing_doc"

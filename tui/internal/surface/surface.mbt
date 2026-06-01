@@ -84,6 +84,7 @@ pub fn Style::underline(self : Style) -> Bool {
 }
 
 ///|
+/// Build a span from text and an optional style (default: unstyled).
 pub fn Span::new(text : String, style? : Style = Style::new()) -> Span {
   { text, style }
 }
@@ -101,6 +102,7 @@ pub fn Span::style(self : Span) -> Style {
 }
 
 ///|
+/// Build a line from its styled spans, in left-to-right order.
 pub fn Line::new(spans : Array[Span]) -> Line {
   { spans, }
 }
@@ -122,16 +124,19 @@ pub fn Line::text(self : Line) -> String {
 }
 
 ///|
+/// Build a cursor at a 0-based (row, col) cell offset.
 pub fn Cursor::new(row~ : Int, col~ : Int) -> Cursor {
   { row, col }
 }
 
 ///|
+/// The cursor's 0-based row offset.
 pub fn Cursor::row(self : Cursor) -> Int {
   self.row
 }
 
 ///|
+/// The cursor's 0-based column offset.
 pub fn Cursor::col(self : Cursor) -> Int {
   self.col
 }
@@ -165,6 +170,9 @@ fn normalize_surface_cursor(
 }
 
 ///|
+/// Build a surface frame, normalizing invariants: `width` is forced to `>= 1`
+/// and the cursor is clamped inside the rows and width so the renderer never
+/// has to re-validate.
 pub fn Surface::new(
   width~ : Int,
   rows~ : Array[Line],
@@ -176,11 +184,13 @@ pub fn Surface::new(
 }
 
 ///|
+/// Number of rows in the surface.
 pub fn Surface::height(self : Surface) -> Int {
   self.rows.length()
 }
 
 ///|
+/// The surface's normalized cursor position.
 pub fn Surface::cursor(self : Surface) -> Cursor {
   self.cursor
 }
@@ -205,6 +215,7 @@ pub fn Surface::with_max_rows(self : Surface, max_rows : Int) -> Surface {
 }
 
 ///|
+/// The line at `row`, or an empty line when `row` is out of range.
 pub fn Surface::line_at(self : Surface, row : Int) -> Line {
   if self.rows.get(row) is Some(line) {
     line

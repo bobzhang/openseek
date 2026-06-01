@@ -68,6 +68,9 @@ async fn Ui::enter(self : Self) -> Unit {
 }
 
 ///|
+/// Append a styled `Doc` to the permanent transcript: insert its rows into the
+/// terminal scrollback above the live area, then redraw the live frame. Runs on
+/// the command queue so it serializes with other redraws.
 pub async fn Ui::append_transcript(self : Self, doc : @doc.Doc) -> Unit {
   self.commands.wait(() => {
     self.transcript.push(doc)
@@ -78,11 +81,16 @@ pub async fn Ui::append_transcript(self : Self, doc : @doc.Doc) -> Unit {
 }
 
 ///|
+/// Project a semantic `TranscriptItem` to a `Doc` and append it to the
+/// transcript via `append_transcript`.
 pub async fn Ui::append_item(self : Self, item : TranscriptItem) -> Unit {
   self.append_transcript(@doc.ToDoc::to_doc(item))
 }
 
 ///|
+/// Set or clear the transient activity label shown above the composer. `Some`
+/// shows a busy/progress line that never enters the transcript; `None` hides it.
+/// Redraws the live frame.
 pub async fn Ui::set_activity(self : Self, activity : @doc.Text?) -> Unit {
   self.commands.wait(() => {
     self.activity = activity
@@ -91,6 +99,8 @@ pub async fn Ui::set_activity(self : Self, activity : @doc.Text?) -> Unit {
 }
 
 ///|
+/// Replace the list of queued inputs shown in the live area (copied defensively)
+/// and redraw the frame.
 pub async fn Ui::set_queued_inputs(self : Self, inputs : Array[Input]) -> Unit {
   self.commands.wait(() => {
     self.queued_inputs = inputs.copy()
@@ -99,6 +109,8 @@ pub async fn Ui::set_queued_inputs(self : Self, inputs : Array[Input]) -> Unit {
 }
 
 ///|
+/// Set the persistent status line below the composer and redraw. Transient input
+/// notices may temporarily override its display until the next input event.
 pub async fn Ui::set_status(self : Self, status : @doc.Text) -> Unit {
   self.commands.wait(() => {
     self.status = status

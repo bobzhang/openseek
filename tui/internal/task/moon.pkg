@@ -1,3 +1,5 @@
 import {
   "moonbitlang/async/aqueue",
 }
+
+warnings = "+missing_doc"

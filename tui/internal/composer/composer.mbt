@@ -2,6 +2,8 @@
 const MinTextRows : Int = 1
 
 ///|
+/// Default cap on how many editable rows the composer grows to before it
+/// scrolls instead of growing further.
 pub const DefaultMaxTextRows : Int = 4
 
 ///|
@@ -221,11 +223,14 @@ fn Mode::prompt_prefix(self : Mode) -> String {
 }
 
 ///|
+/// Whether the composer is in normal agent-steering input mode.
 pub fn Mode::is_input(self : Mode) -> Bool {
   self == Input
 }
 
 ///|
+/// Whether the composer is in shell mode, where submitted text runs as a
+/// shell command and the first prompt shows `! `.
 pub fn Mode::is_shell(self : Mode) -> Bool {
   self == Shell
 }
@@ -350,6 +355,8 @@ fn make_model(
 }
 
 ///|
+/// Create an empty composer in `Input` mode whose editable area grows to at
+/// most `max_text_rows` wrapped rows.
 pub fn Model::new(max_text_rows? : Int = DefaultMaxTextRows) -> Model {
   Model::from_text("", max_text_rows~)
 }
@@ -363,11 +370,15 @@ fn Model::from_text(
 }
 
 ///|
+/// Clear the composer back to empty `Input` mode, resetting the cursor and
+/// scroll window.
 pub fn Model::reset(self : Model) -> Unit {
   self.set_state("", 0, None, 0, mode=Input)
 }
 
 ///|
+/// Replace the entire buffer with `text` in `mode`, placing the cursor at the
+/// end and scrolling the view back to the top. Used to load history entries.
 pub fn Model::replace(self : Model, text : String, mode~ : Mode) -> Unit {
   self.set_state(text, @text.grapheme_count(text), None, 0, mode~)
 }
@@ -578,6 +589,8 @@ fn Model::delete_range(self : Model, start : Int, end : Int) -> Unit {
 }
 
 ///|
+/// Insert `text` at the cursor and advance the cursor past it. Inserted text is
+/// counted by graphemes, so multi-byte characters move the cursor one step each.
 pub fn Model::insert(self : Model, text : String) -> Unit {
   let prefix = @text.grapheme_slice(self.text, 0, self.cursor)
   let suffix = @text.grapheme_slice(
@@ -595,6 +608,12 @@ pub fn Model::insert(self : Model, text : String) -> Unit {
 }
 
 ///|
+/// Insert text typed by the user, applying the shell-mode shortcut.
+///
+/// When the buffer is empty, the cursor is at the start, and the mode is
+/// `Input`, a leading `!` switches the composer into `Shell` mode and is
+/// dropped from the editable text (only the text after it is inserted).
+/// Otherwise this behaves like `insert`.
 pub fn Model::insert_user_text(self : Model, text : String) -> Unit {
   if self.mode.is_input() && self.text.length() == 0 && self.cursor == 0 {
     match text {
@@ -616,6 +635,8 @@ pub fn Model::insert_user_text(self : Model, text : String) -> Unit {
 }
 
 ///|
+/// Delete the one grapheme before the cursor (Backspace). At the start of the
+/// buffer this is a no-op that also normalizes the mode back to `Input`.
 pub fn Model::delete_before(self : Model) -> Unit {
   if self.cursor <= 0 {
     self.set_state(self.text, 0, None, self.view_start, mode=Input)
@@ -637,6 +658,8 @@ pub fn Model::delete_before(self : Model) -> Unit {
 }
 
 ///|
+/// Delete the one grapheme at the cursor (Delete / Ctrl-D). At the end of the
+/// buffer this is a no-op.
 pub fn Model::delete_after(self : Model) -> Unit {
   let length = @text.grapheme_count(self.text)
   if self.cursor >= length {
@@ -661,11 +684,15 @@ pub fn Model::delete_after(self : Model) -> Unit {
 }
 
 ///|
+/// Move the cursor one grapheme left, crossing line breaks. Clamped at the
+/// start of the buffer.
 pub fn Model::move_left(self : Model) -> Unit {
   self.move_to_cursor(self.cursor - 1, None)
 }
 
 ///|
+/// Move the cursor one grapheme right, crossing line breaks. Clamped at the end
+/// of the buffer.
 pub fn Model::move_right(self : Model) -> Unit {
   self.move_to_cursor(self.cursor + 1, None)
 }
@@ -703,12 +730,16 @@ pub fn Model::move_word_left(self : Model) -> Unit {
 }
 
 ///|
+/// Move the cursor to the start of its current logical line (Home / Ctrl-A),
+/// not the start of the wrapped row.
 pub fn Model::move_home(self : Model) -> Unit {
   let point = self.cursor_point()
   self.move_to_cursor(line_start_cursor(self.text, point.line), None)
 }
 
 ///|
+/// Move the cursor to the end of its current logical line (End / Ctrl-E), past
+/// any soft-wrapped rows of that line.
 pub fn Model::move_end(self : Model) -> Unit {
   let point = self.cursor_point()
   let lines = @text.split_lines(self.text)
@@ -723,12 +754,19 @@ pub fn Model::move_end(self : Model) -> Unit {
 }
 
 ///|
+/// Delete from the start of the current logical line up to the cursor (Ctrl-U).
 pub fn Model::kill_before(self : Model) -> Unit {
   let point = self.cursor_point()
   self.delete_range(line_start_cursor(self.text, point.line), self.cursor)
 }
 
 ///|
+/// Delete from the cursor to the end of the current logical line (Ctrl-K).
+///
+/// When the cursor is already at the line's end, kill the following line break
+/// so the next line joins up; on a trailing empty line with nothing ahead,
+/// remove the line itself by deleting the preceding break. On a fully empty
+/// buffer this is a no-op.
 pub fn Model::kill_after(self : Model) -> Unit {
   let point = self.cursor_point()
   let lines = @text.split_lines(self.text)

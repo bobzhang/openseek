@@ -11,6 +11,10 @@ struct Config {
 }
 
 ///|
+/// Build a UI `Config`. `esc_timeout_ms` bounds how long the reader waits to
+/// disambiguate a lone `Esc` from a CSI escape sequence, and `composer_max_rows`
+/// caps how tall the editable input area grows. Non-positive values fall back to
+/// the defaults (`50` ms and `@composer.DefaultMaxTextRows`).
 pub fn Config::new(
   esc_timeout_ms? : Int = DefaultEscTimeoutMs,
   composer_max_rows? : Int = DefaultComposerMaxRows,

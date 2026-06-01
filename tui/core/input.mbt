@@ -28,6 +28,9 @@ pub fn Input::text(self : Input) -> String {
 }
 
 ///|
+/// Project the input into a renderable `@doc.Doc`: the first line carries the
+/// input's `prefix` and continuation lines are indented two columns, all in the
+/// prompt style.
 pub impl @doc.ToDoc for Input with fn to_doc(self) {
   let source = @text.split_lines(self.text())
   let texts : Array[@doc.Text] = []

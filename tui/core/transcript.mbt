@@ -2,6 +2,7 @@
 // renderable `@doc.Doc` blocks.
 
 ///|
+/// The lifecycle state of a tool call, selecting how its bullet is styled.
 pub(all) enum ToolStatus {
   InProgress
   Completed
@@ -20,6 +21,8 @@ fn ToolStatus::style(self : ToolStatus) -> @doc.Style {
 }
 
 ///|
+/// A tool invocation: a `title`, an optional lifecycle `status`, and zero or more
+/// `details` lines shown beneath the title.
 pub struct ToolCall {
   title : @doc.Text
   status : ToolStatus?
@@ -27,6 +30,8 @@ pub struct ToolCall {
 }
 
 ///|
+/// Build a `ToolCall` from its `title`, an optional `status`, and optional
+/// `details` lines (defaulting to none); the given `details` array is copied.
 pub fn ToolCall::ToolCall(
   title : @doc.Text,
   status? : ToolStatus,
@@ -36,6 +41,8 @@ pub fn ToolCall::ToolCall(
 }
 
 ///|
+/// One committed entry in the transcript: a submitted `Input`, an agent
+/// `Response`, agent `Reasoning`, a `ToolCall`, or an `Error`.
 pub(all) enum TranscriptItem {
   Input(Input)
   Response(String)
@@ -63,6 +70,10 @@ fn bulleted_lines(
 }
 
 ///|
+/// Project a transcript item into a renderable `@doc.Doc`: inputs use their own
+/// prefixed projection, responses and reasoning become dim `•`-bulleted blocks,
+/// tool calls render a status-styled bullet with `└`-indented detail lines, and
+/// errors become an error-styled `■`-bulleted block.
 pub impl @doc.ToDoc for TranscriptItem with fn to_doc(self) {
   match self {
     Input(input) => input.to_doc()

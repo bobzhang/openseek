@@ -25,6 +25,8 @@ struct Viewport {
 }
 
 ///|
+/// Create a viewport with default terminal size and no placed live area. The
+/// area stays unplaced (`geometry` is `None`) until the first `enter`.
 pub fn Viewport::new() -> Viewport {
   { size: @terminal_size.TerminalSize::default(), geometry: None, cache: Fresh }
 }
@@ -48,6 +50,7 @@ fn Viewport::height(self : Viewport) -> Int {
 }
 
 ///|
+/// Current terminal width in columns, as last read by `refresh_size`.
 pub fn Viewport::cols(self : Viewport) -> Int {
   self.size.cols()
 }
@@ -86,6 +89,13 @@ fn Viewport::set_geometry(self : Viewport, top~ : Int, height~ : Int) -> Unit {
 }
 
 ///|
+/// Re-query the terminal window size and re-clamp the live area to it.
+///
+/// Falls back to the default size if the window size can't be read. When the
+/// dimensions actually change the cached frame is invalidated (a resize can
+/// reflow rows off their old footprint) and an already-placed live area is
+/// re-clamped to stay on screen; before the first `enter` there is nothing to
+/// re-place.
 pub fn Viewport::refresh_size(self : Viewport, tty : @tty.Tty) -> Unit {
   let size = try tty.window_size() catch {
     _ => @terminal_size.TerminalSize::default()
@@ -501,6 +511,14 @@ async fn Viewport::insert_lines_before(
 }
 
 ///|
+/// Commit transcript rows above the live area, scrolling earlier rows into
+/// native scrollback.
+///
+/// Before the live area exists (`geometry` is `None`), the rows are written
+/// straight at the cursor (each followed by `\r\n`) and the cache is
+/// invalidated. Once placed, the area is first shifted down to open blank rows
+/// above it, the lines are drawn into a scroll region so older transcript spills
+/// into scrollback, then the cursor is restored to the live frame.
 pub async fn Viewport::insert_before(
   self : Viewport,
   tty : @tty.Tty,
@@ -526,6 +544,12 @@ pub async fn Viewport::insert_before(
 }
 
 ///|
+/// Tear down the live area and hand the terminal back to the shell.
+///
+/// Restores the full-screen scroll region, default text style, autowrap, and
+/// cursor visibility. If the area was placed, moves the cursor below it and
+/// emits a newline so the shell prompt starts on a fresh line beneath the
+/// committed output.
 pub async fn Viewport::leave(self : Viewport, tty : @tty.Tty) -> Unit {
   tty.reset_top_bottom_margins()
   tty.reset_style()

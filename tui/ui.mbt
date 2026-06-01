@@ -108,6 +108,11 @@ async fn Ui::read_tty_events(self : Ui) -> Unit {
 }
 
 ///|
+/// Open a terminal session, run `body` with a live `Ui`, and always restore the
+/// terminal afterwards. Opens the tty in raw mode, requests the kitty keyboard
+/// "disambiguate" enhancement (gracefully ignored where unsupported), draws the
+/// first frame, then spawns the command queue and tty reader for the duration of
+/// `body`.
 pub async fn[T] with_ui(
   config? : Config = Config::new(),
   body : async (Ui) -> T,

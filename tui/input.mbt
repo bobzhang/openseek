@@ -246,6 +246,8 @@ async fn Ui::handle_tty_event(self : Self, event : @tty.Event) -> Event? {
 }
 
 ///|
+/// Block until the next semantic `Event` from the input loop. Reraises any error
+/// the tty reader encountered; yields `Quit` once the reader is closed.
 pub async fn Ui::read_event(self : Self) -> Event {
   self.events.get().unwrap_or_error()
 }
