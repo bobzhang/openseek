@@ -1,23 +1,15 @@
 ///|
-/// `CSI ?7 l` — disable autowrap (DECAWM off). The renderer draws full-width
-/// rows itself; without this, a glyph in the last column wraps to a new physical
-/// line and a later resize can reflow stale rows back into the live area.
-const DisableAutoWrap : String = "\u001b[?7l"
-
-///|
-/// `CSI ?7 h` — re-enable autowrap (DECAWM on). Always paired with
-/// `DisableAutoWrap` so normal terminal output wraps again afterwards.
-const EnableAutoWrap : String = "\u001b[?7h"
-
-///|
-/// Full reset before a from-scratch redraw, as a sequence of CSI ops:
-///   - `CSI r`   reset the scroll region to the whole screen
-///   - `CSI 0 m` reset text style
-///   - `CSI H`   cursor home
-///   - `CSI 2 J` erase the visible screen
-///   - `CSI 3 J` erase the scrollback buffer
-///   - `CSI H`   cursor home again (after the erases)
-const ClearScreenAndScrollback : String = "\u001b[r\u001b[0m\u001b[H\u001b[2J\u001b[3J\u001b[H"
+/// Full reset before a from-scratch redraw: drop any scroll region and text
+/// style, then erase both the visible screen and the scrollback, leaving the
+/// cursor at the home position.
+async fn clear_screen_and_scrollback(tty : @tty.Tty) -> Unit {
+  tty.reset_top_bottom_margins()
+  tty.reset_style()
+  tty.set_cursor_position(1, 1)
+  tty.erase_display()
+  tty.erase_scrollback()
+  tty.set_cursor_position(1, 1)
+}
 
 ///|
 struct Viewport {
@@ -156,18 +148,18 @@ async fn draw_surface_line_at_cursor(
     // DECSTBM redraws full-width rows. If those rows are left as soft-wrapped
     // terminal lines, resizing can reflow old separators/prompts back into the
     // live viewport before the next draw clears them.
-    tty.write(DisableAutoWrap)
+    tty.disable_auto_wrap()
     try {
       for span in line.spans() {
         write_span(tty, span)
       }
     } catch {
       error => {
-        tty.write(EnableAutoWrap)
+        tty.enable_auto_wrap()
         raise error
       }
     } noraise {
-      _ => tty.write(EnableAutoWrap)
+      _ => tty.enable_auto_wrap()
     }
   }
 }
@@ -350,8 +342,8 @@ pub async fn Viewport::replay_with_rows_before(
   surface : @surface.Surface,
 ) -> Unit {
   tty.hide_cursor()
-  tty.write(ClearScreenAndScrollback)
-  tty.write(EnableAutoWrap)
+  clear_screen_and_scrollback(tty)
+  tty.enable_auto_wrap()
   self.cache = Fresh
   // `set_geometry` clamps the height to the screen itself.
   self.set_geometry(top=1, height=surface.height())
@@ -538,7 +530,7 @@ pub async fn Viewport::insert_before(
 pub async fn Viewport::leave(self : Viewport, tty : @tty.Tty) -> Unit {
   tty.reset_top_bottom_margins()
   tty.reset_style()
-  tty.write(EnableAutoWrap)
+  tty.enable_auto_wrap()
   tty.show_cursor()
   if self.geometry is Some(_) {
     tty.set_cursor_position(self.bottom(), 1)
