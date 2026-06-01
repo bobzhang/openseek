@@ -149,6 +149,25 @@ fn contains_guarded_moon_fragment(cmd : String) -> Bool {
 
 ///|
 async fn shell(input : @decode.ShellInput) -> @agent_tool.ToolAction {
+  match input.cwd {
+    Some(cwd) => {
+      let exists = @fs.exists(cwd)
+      if !exists {
+        return @agent_tool.ToolAction::respond(
+          "error: cwd does not exist: \{cwd}",
+          is_error=true,
+        )
+      }
+      let kind = @fs.kind(cwd)
+      if kind != Directory {
+        return @agent_tool.ToolAction::respond(
+          "error: cwd is not a directory: \{cwd}",
+          is_error=true,
+        )
+      }
+    }
+    None => ()
+  }
   let (code, output) = match input.cwd {
     Some(cwd) => @process.collect_output_merged("sh", ["-c", input.cmd], cwd~)
     None => @process.collect_output_merged("sh", ["-c", input.cmd])
@@ -328,4 +347,21 @@ async test "shell rejects non-object arguments" {
   guard result is Respond(output) else { fail("expected Respond") }
   assert_true(output.is_error)
   assert_eq(output.content, "error: shell requires object arguments")
+}
+
+///|
+async test "shell rejects non-existent cwd" {
+  let result = execute({ "cmd": "echo hello", "cwd": "/nonexistent/path/xyz" })
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_true(output.is_error)
+  assert_true(output.content.contains("cwd does not exist"))
+}
+
+///|
+async test "shell rejects cwd that is a file not a directory" {
+  // Use a path that is known to exist and be a file-like entity
+  let result = execute({ "cmd": "echo hello", "cwd": "/dev/null" })
+  guard result is Respond(output) else { fail("expected Respond") }
+  assert_true(output.is_error)
+  assert_true(output.content.contains("cwd is not a directory"))
 }
