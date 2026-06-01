@@ -113,12 +113,32 @@ fn Style::to_viewport(self : Style) -> @viewport.Style {
 }
 
 ///|
+/// Terminal tab stop width. Tabs in transcript content are expanded to spaces
+/// up to the next multiple of this, matching the conventional terminal default.
+const TabWidth : Int = 8
+
+///|
+/// Whether a grapheme is a C0 control character or DEL. `\n` and `\t` are
+/// handled separately by the wrapper, so this only matches the remaining
+/// controls (`\r`, etc.) that must not reach the terminal verbatim.
+fn is_control_grapheme(grapheme : String) -> Bool {
+  match grapheme.get_char(0) {
+    Some(c) => {
+      let code = c.to_int()
+      code < 0x20 || code == 0x7f
+    }
+    None => false
+  }
+}
+
+///|
 fn Text::wrap(self : Text, width~ : Int) -> Array[@viewport.Line] {
   let rows : Array[@viewport.Line] = []
   let mut spans : Array[@viewport.Span] = []
   let mut used = 0
   let width = if width < 1 { 1 } else { width }
   for span in self.spans {
+    let style = span.style.to_viewport()
     for grapheme in @grapheme.grapheme_iter(span.text) {
       let text = grapheme.to_owned()
       if text == "\n" {
@@ -126,14 +146,27 @@ fn Text::wrap(self : Text, width~ : Int) -> Array[@viewport.Line] {
         spans = []
         used = 0
       } else {
-        let next = @unicodewidth.str_width(text)
-        if used > 0 && used + next > width {
-          rows.push(@viewport.Line::new(spans))
-          spans = []
-          used = 0
+        // Normalize control characters so the columns we count match what the
+        // terminal draws. A raw `\t` jumps to the terminal's tab stop and a
+        // `\r` returns the cursor to column 1; neither is modeled by `used`, so
+        // they shove following text into the wrong column.
+        let pieces : Array[String] = if text == "\t" {
+          Array::make(TabWidth - used % TabWidth, " ")
+        } else if is_control_grapheme(text) {
+          []
+        } else {
+          [text]
         }
-        spans.push(@viewport.Span::new(text, style=span.style.to_viewport()))
-        used += next
+        for piece in pieces {
+          let next = @unicodewidth.str_width(piece)
+          if used > 0 && used + next > width {
+            rows.push(@viewport.Line::new(spans))
+            spans = []
+            used = 0
+          }
+          spans.push(@viewport.Span::new(piece, style~))
+          used += next
+        }
       }
     }
   }

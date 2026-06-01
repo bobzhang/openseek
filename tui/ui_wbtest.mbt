@@ -196,6 +196,26 @@ test "doc layout wraps styled text by display width" {
 }
 
 ///|
+test "wrap expands tabs to the next stop and drops other control chars" {
+  // `\t` expands to spaces up to the next 8-column tab stop so following text
+  // is not shoved to a terminal tab stop we never accounted for.
+  inspect(
+    Text::plain("a\tb").wrap(width=40).map(line => line.text()).join("|"),
+    content="a       b",
+  )
+  inspect(
+    Text::plain("abcdef\tg").wrap(width=40).map(line => line.text()).join("|"),
+    content="abcdef  g",
+  )
+  // `\r` and other C0 controls are dropped entirely (a raw `\r` would return
+  // the cursor to column 1 and overwrite the line).
+  inspect(
+    Text::plain("x\ry").wrap(width=40).map(line => line.text()).join("|"),
+    content="xy",
+  )
+}
+
+///|
 test "doc constructors copy mutable arrays" {
   let spans = [Span::plain("a")]
   let text = Text(spans)
