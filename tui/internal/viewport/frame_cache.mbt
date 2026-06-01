@@ -35,16 +35,17 @@ fn FrameCache::surface(self : FrameCache) -> @surface.Surface? {
 }
 
 ///|
-/// The physical region the previous frame occupied, as `(top, height)`.
+/// The physical region the previous frame occupied, or `None` when there is no
+/// prior frame.
 ///
 /// `Drawn` reuses the viewport's live `top` because the cached surface has not
 /// moved since it was drawn. `Stale` returns the remembered footprint. `Fresh`
-/// reports an empty region so the first redraw clears nothing.
-fn FrameCache::footprint(self : FrameCache, live_top~ : Int) -> (Int, Int) {
+/// has nothing on screen, so the first redraw clears nothing.
+fn FrameCache::footprint(self : FrameCache, live_top~ : Int) -> Geometry? {
   match self {
-    Fresh => (0, 0)
-    Drawn(surface) => (live_top, surface.height())
-    Stale(top~, height~) => (top, height)
+    Fresh => None
+    Drawn(surface) => Some({ top: live_top, height: surface.height() })
+    Stale(top~, height~) => Some({ top, height })
   }
 }
 

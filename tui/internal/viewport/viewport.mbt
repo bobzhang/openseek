@@ -20,13 +20,13 @@ const EnableAutoWrap : String = "\u001b[?7h"
 const ClearScreenAndScrollback : String = "\u001b[r\u001b[0m\u001b[H\u001b[2J\u001b[3J\u001b[H"
 
 ///|
-/// Where the live area sits on screen: its 1-based start row `top` and the
-/// number of physical rows it occupies, `height` — queued-input previews,
-/// activity, separator, composer text, and status, but not transcript rows
-/// inserted above it.
+/// A rectangular block of terminal rows: 1-based start row `top` and row count
+/// `height` (so `bottom = top + height - 1`).
 ///
-/// A `Geometry` only ever describes a *placed* area, so its fields satisfy the
-/// viewport invariant: `1 <= height <= size.rows` and `1 <= top <= max_top`.
+/// Used for the live area's current placement — which additionally satisfies the
+/// viewport invariant `1 <= height <= size.rows` and `1 <= top <= max_top` — and
+/// for a previous frame's footprint (see `FrameCache`), which is the same shape
+/// but may predate a resize.
 priv struct Geometry {
   top : Int
   height : Int
@@ -279,17 +279,32 @@ async fn with_scroll_region(
 /// above the new (higher) live-area top.
 async fn scroll_scrollback_up_for_growth(
   tty : @tty.Tty,
-  old_top~ : Int,
+  old : Geometry?,
   new_top~ : Int,
 ) -> Unit {
-  let rows = old_top - new_top
-  let scrollback_bottom = old_top - 1
+  // old:                                     new:
+  //
+  // +------------+                           +------------+
+  // | scrollback |                           | scrollback |
+  // | scrollback |                           | scrollback |
+  // | scrollback |                           +------------+
+  // | scrollback |                new top -> +------------+
+  // +------------+ <- scrollback_bottom      | composer   |
+  // +------------+ <- old.top                | composer   |
+  // | composer   |                           | composer   |
+  // +------------+                           +------------+
+  //
+  // Here we need to make rooms for 2 rows. Since top is 1-based line number from the top
+  // of the terminal, we can obtain the number of rows to make by old.top - new_top.
+  // With no prior frame there is nothing above to scroll, so this is a no-op.
+  //
+  guard old is Some(old) else { return }
+  let rows = old.top - new_top
+  let scrollback_bottom = old.top - 1
   if rows > 0 && scrollback_bottom >= 1 {
     with_scroll_region(tty, 1, scrollback_bottom, () => {
       tty.set_cursor_position(scrollback_bottom, 1)
-      for _ in 0..<rows {
-        tty.write("\r\n")
-      }
+      tty.write("\r\n".repeat(rows))
     })
   }
 }
@@ -299,16 +314,14 @@ async fn Viewport::draw_placed_surface_rows(
   self : Viewport,
   tty : @tty.Tty,
   old_frame : @surface.Surface?,
-  old_top~ : Int,
-  old_height~ : Int,
+  old : Geometry?,
   new_frame~ : @surface.Surface,
   new_top~ : Int,
 ) -> Unit {
   let new_height = new_frame.height()
-  let old_content_unknown = (old_top > 0 && old_height > 0) && old_frame is None
+  let old_content_unknown = old is Some(_) && old_frame is None
   let (draw_top, draw_bottom) = redraw_span(
-    old_top~,
-    old_height~,
+    old,
     new_top~,
     new_height~,
     screen_rows=self.size.rows(),
@@ -317,10 +330,10 @@ async fn Viewport::draw_placed_surface_rows(
   if draw_top <= draw_bottom {
     let mut rows_changed = false
     for row in draw_top..<=draw_bottom {
-      let old_line = if old_frame is Some(frame) {
-        line_at_terminal_row(frame, row~, top=old_top, height=old_height)
-      } else {
-        None
+      let old_line = match (old_frame, old) {
+        (Some(frame), Some(g)) =>
+          line_at_terminal_row(frame, row~, top=g.top, height=g.height)
+        _ => None
       }
       let new_line = line_at_terminal_row(
         new_frame,
@@ -336,10 +349,10 @@ async fn Viewport::draw_placed_surface_rows(
         draw_surface_line_at(tty, row, new_line)
       }
     }
-    let cursor_changed = if old_frame is Some(frame) {
-      !same_terminal_cursor(frame, new_frame, top=old_top, other_top=new_top)
-    } else {
-      true
+    let cursor_changed = match (old_frame, old) {
+      (Some(frame), Some(g)) =>
+        !same_terminal_cursor(frame, new_frame, top=g.top, other_top=new_top)
+      _ => true
     }
     if rows_changed {
       tty.show_cursor()
@@ -364,7 +377,7 @@ async fn Viewport::draw_surface_rows(
   timeout_ms~ : Int,
 ) -> @surface.Surface {
   let old_frame = self.cache.surface()
-  let (old_top, old_height) = self.cache.footprint(live_top=self.top())
+  let old = self.cache.footprint(live_top=self.top())
   // Readline-style composer ownership:
   //
   //   - The first redraw anchors at the current cursor position.
@@ -372,7 +385,7 @@ async fn Viewport::draw_surface_rows(
   //     committed output above the composer into terminal scrollback.
   //   - Shrink keeps `top` stable and clears rows released below the live area.
   let next_height = visible_height(self.size, surface)
-  let new_top = if old_height == 0 {
+  let new_top = if old is None {
     self.initial_top(tty, height=next_height, timeout_ms~)
   } else {
     self.next_top(height=next_height)
@@ -380,12 +393,11 @@ async fn Viewport::draw_surface_rows(
   self.set_geometry(top=new_top, height=next_height)
   let surface = surface.with_max_rows(self.height())
   let new_top = self.top()
-  scroll_scrollback_up_for_growth(tty, old_top~, new_top~)
+  scroll_scrollback_up_for_growth(tty, old, new_top~)
   self.draw_placed_surface_rows(
     tty,
     old_frame,
-    old_top~,
-    old_height~,
+    old,
     new_frame=surface,
     new_top~,
   )

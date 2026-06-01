@@ -72,25 +72,25 @@ fn normalized_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
 /// any stale rows below it. A result with `top > bottom` means nothing needs
 /// repainting.
 fn redraw_span(
-  old_top~ : Int,
-  old_height~ : Int,
+  old : Geometry?,
   new_top~ : Int,
   new_height~ : Int,
   screen_rows~ : Int,
   old_content_unknown~ : Bool,
 ) -> (Int, Int) {
-  let has_old_region = old_top > 0 && old_height > 0
-  let old_bottom = if has_old_region {
-    old_top + old_height - 1
-  } else {
-    new_top - 1
+  let old_bottom = match old {
+    Some(g) => g.bottom()
+    None => new_top - 1
   }
   let new_bottom = if new_height > 0 {
     new_top + new_height - 1
   } else {
     new_top - 1
   }
-  let top = if has_old_region && old_top < new_top { old_top } else { new_top }
+  let top = match old {
+    Some(g) if g.top < new_top => g.top
+    _ => new_top
+  }
   let bottom = if old_bottom > new_bottom { old_bottom } else { new_bottom }
   let bottom = if old_content_unknown { screen_rows } else { bottom }
   let top = if top < 1 { 1 } else { top }
