@@ -1,8 +1,0 @@
-import {
-  "kawaz/grapheme",
-  "rami3l/unicodewidth",
-  "moonbit-community/tty",
-  "moonbit-community/tty/color",
-}
-
-supported_targets = "native"
