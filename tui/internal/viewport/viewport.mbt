@@ -20,22 +20,31 @@ const EnableAutoWrap : String = "\u001b[?7h"
 const ClearScreenAndScrollback : String = "\u001b[r\u001b[0m\u001b[H\u001b[2J\u001b[3J\u001b[H"
 
 ///|
+/// Where the live area sits on screen: its 1-based start row `top` and the
+/// number of physical rows it occupies, `height` — queued-input previews,
+/// activity, separator, composer text, and status, but not transcript rows
+/// inserted above it.
+///
+/// A `Geometry` only ever describes a *placed* area, so its fields satisfy the
+/// viewport invariant: `1 <= height <= size.rows` and `1 <= top <= max_top`.
+priv struct Geometry {
+  top : Int
+  height : Int
+}
+
+///|
+/// Bottom-most row the live area occupies (`top + height - 1`).
+fn Geometry::bottom(self : Geometry) -> Int {
+  self.top + self.height - 1
+}
+
+///|
 struct Viewport {
-  // Invariant after the first draw: `size.rows >= 1`, `size.cols >= 1`,
-  // `1 <= height <= size.rows`, and `1 <= top <= max_top()`.
-  //
-  // Before the live area has been drawn, `top == 0` and `height == 0`. This
-  // matches readline's model: output can be written before the input area
-  // exists, and the first redraw anchors the live area at the current terminal
-  // cursor.
-  // 1-based terminal row where the live input viewport starts.
-  mut top : Int
   mut size : @layout.TerminalSize
-  // Number of physical rows currently occupied by the live input viewport.
-  // This is derived from the latest `Surface` height, so it includes rows such
-  // as queued-input previews, activity, separator, composer text, and status.
-  // It intentionally excludes transcript rows inserted above the viewport.
-  mut height : Int
+  // The live area's placement, or `None` before it has been drawn. Matching
+  // readline's model, output can be written before the input area exists; the
+  // first redraw anchors the area at the current terminal cursor and sets this.
+  mut geometry : Geometry?
   // Diff/clear state for the live area: the last drawn surface (for row diffing)
   // or, once dropped, the footprint it left behind (for clearing). See
   // `FrameCache`.
@@ -45,7 +54,25 @@ struct Viewport {
 ///|
 pub fn Viewport::new(height~ : Int) -> Viewport {
   let _ = height
-  { top: 0, size: @layout.TerminalSize::default(), height: 0, cache: Fresh }
+  { size: @layout.TerminalSize::default(), geometry: None, cache: Fresh }
+}
+
+///|
+/// The live area's start row, or 0 before it has been placed.
+fn Viewport::top(self : Viewport) -> Int {
+  match self.geometry {
+    Some(g) => g.top
+    None => 0
+  }
+}
+
+///|
+/// The live area's height in rows, or 0 before it has been placed.
+fn Viewport::height(self : Viewport) -> Int {
+  match self.geometry {
+    Some(g) => g.height
+    None => 0
+  }
 }
 
 ///|
@@ -63,12 +90,10 @@ pub fn Viewport::cols(self : Viewport) -> Int {
 
 ///|
 fn Viewport::bottom(self : Viewport) -> Int {
-  bottom_of(top=self.top, height=self.height)
-}
-
-///|
-fn Viewport::max_top(self : Viewport) -> Int {
-  max_top_for(self.size, self.height)
+  match self.geometry {
+    Some(g) => g.bottom()
+    None => 0
+  }
 }
 
 ///|
@@ -76,23 +101,21 @@ fn Viewport::set_size(self : Viewport, size : @layout.TerminalSize) -> Unit {
   if size.rows() != self.size.rows() || size.cols() != self.size.cols() {
     // Terminal resize can reflow rows away from their old physical footprint.
     // Resize rebuilds from semantic rows, so the cached frame must be dropped.
-    self.cache = self.cache.invalidate(live_top=self.top)
+    self.cache = self.cache.invalidate(live_top=self.top())
   }
   self.size = size
-  if self.top > 0 && self.height > 0 {
-    self.set_geometry(top=self.top, height=self.height)
+  // Re-clamp an already-placed live area against the new dimensions so it stays
+  // on screen; before the first draw there is nothing to place.
+  if self.geometry is Some(g) {
+    self.set_geometry(top=g.top, height=g.height)
   }
-}
-
-///|
-fn Viewport::set_top(self : Viewport, top : Int) -> Unit {
-  self.top = top.clamp(min=1, max=self.max_top())
 }
 
 ///|
 fn Viewport::set_geometry(self : Viewport, top~ : Int, height~ : Int) -> Unit {
-  self.height = normalized_height(self.size, height)
-  self.top = normalized_top(self.size, self.height, top)
+  let height = normalized_height(self.size, height)
+  let top = normalized_top(self.size, height, top)
+  self.geometry = Some({ top, height })
 }
 
 ///|
@@ -129,7 +152,7 @@ async fn Viewport::initial_top(
 /// raises it by just enough when it would not, so no extra growth handling is
 /// needed.
 fn Viewport::next_top(self : Viewport, height~ : Int) -> Int {
-  normalized_top(self.size, height, self.top)
+  normalized_top(self.size, height, self.top())
 }
 
 ///|
@@ -341,7 +364,7 @@ async fn Viewport::draw_surface_rows(
   timeout_ms~ : Int,
 ) -> @surface.Surface {
   let old_frame = self.cache.surface()
-  let (old_top, old_height) = self.cache.footprint(live_top=self.top)
+  let (old_top, old_height) = self.cache.footprint(live_top=self.top())
   // Readline-style composer ownership:
   //
   //   - The first redraw anchors at the current cursor position.
@@ -355,8 +378,8 @@ async fn Viewport::draw_surface_rows(
     self.next_top(height=next_height)
   }
   self.set_geometry(top=new_top, height=next_height)
-  let surface = surface.with_max_rows(self.height)
-  let new_top = self.top
+  let surface = surface.with_max_rows(self.height())
+  let new_top = self.top()
   scroll_scrollback_up_for_growth(tty, old_top~, new_top~)
   self.draw_placed_surface_rows(
     tty,
@@ -399,13 +422,13 @@ pub async fn Viewport::replay_with_rows_before(
   self.cache = Fresh
   let next_height = visible_height(self.size, surface)
   self.set_geometry(top=1, height=next_height)
-  let surface = surface.with_max_rows(self.height)
+  let surface = surface.with_max_rows(self.height())
   let bottom = self.bottom()
-  for row in self.top..<=bottom {
+  for row in self.top()..<=bottom {
     draw_surface_line_at(
       tty,
       row,
-      line_at_terminal_row(surface, row~, top=self.top, height=self.height),
+      line_at_terminal_row(surface, row~, top=self.top(), height=self.height()),
     )
   }
   if bottom < self.size.rows() {
@@ -415,7 +438,7 @@ pub async fn Viewport::replay_with_rows_before(
   }
   self.cache = Drawn(surface)
   self.insert_before(tty, rows_before)
-  place_cursor(tty, surface, top=self.top)
+  place_cursor(tty, surface, top=self.top())
 }
 
 ///|
@@ -442,7 +465,7 @@ async fn Viewport::shift_down_for_insert(
   tty : @tty.Tty,
   lines~ : Int,
 ) -> Int {
-  let top = self.top
+  let top = self.top()
   let space = self.size.rows() - self.bottom()
   let available = if space < 0 { 0 } else { space }
   let shift = if lines < available { lines } else { available }
@@ -453,7 +476,7 @@ async fn Viewport::shift_down_for_insert(
         tty.reverse_index()
       }
     })
-    self.set_top(top + shift)
+    self.set_geometry(top=top + shift, height=self.height())
   }
   top
 }
@@ -471,7 +494,7 @@ async fn Viewport::insert_lines_before(
   lines : Array[@surface.Line],
   cursor_row~ : Int,
 ) -> Unit {
-  let scrollback_bottom = self.top - 1
+  let scrollback_bottom = self.top() - 1
   if scrollback_bottom < 1 {
     for line in lines {
       draw_surface_line_at_cursor(tty, Some(line))
@@ -507,8 +530,8 @@ pub async fn Viewport::insert_before(
   tty : @tty.Tty,
   lines : Array[@surface.Line],
 ) -> Unit {
-  if self.top <= 0 || self.height <= 0 {
-    self.cache = self.cache.invalidate(live_top=self.top)
+  if self.geometry is None {
+    self.cache = self.cache.invalidate(live_top=self.top())
     for line in lines {
       draw_surface_line_at_cursor(tty, Some(line))
       tty.write("\r\n")
@@ -519,7 +542,7 @@ pub async fn Viewport::insert_before(
     if self.cache.surface() is Some(frame) {
       tty.show_cursor()
       tty.set_cursor_position(
-        self.top + frame.cursor().row(),
+        self.top() + frame.cursor().row(),
         1 + frame.cursor().col(),
       )
     }
@@ -532,7 +555,7 @@ pub async fn Viewport::leave(self : Viewport, tty : @tty.Tty) -> Unit {
   tty.reset_style()
   tty.write(EnableAutoWrap)
   tty.show_cursor()
-  if self.top > 0 && self.height > 0 {
+  if self.geometry is Some(_) {
     tty.set_cursor_position(self.bottom(), 1)
     tty.write("\r\n")
   }

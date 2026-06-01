@@ -2,12 +2,11 @@
 test "viewport starts undrawn and normalizes stored geometry" {
   let viewport = Viewport::new(height=20)
   viewport.set_size(@layout.TerminalSize::new(rows=8, cols=80))
-  inspect(viewport.top, content="0")
-  inspect(viewport.height, content="0")
+  inspect(viewport.top(), content="0")
+  inspect(viewport.height(), content="0")
   inspect(viewport.cache is Fresh, content="true")
   viewport.set_geometry(top=99, height=4)
-  inspect(viewport.max_top(), content="5")
-  inspect(viewport.top, content="5")
+  inspect(viewport.top(), content="5")
   inspect(viewport.bottom(), content="8")
 }
 
@@ -45,7 +44,7 @@ test "viewport remembers stale frame footprint after resize invalidates frame" {
   }
   inspect(stale_top, content="6")
   inspect(stale_height, content="5")
-  inspect(viewport.top, content="5")
+  inspect(viewport.top(), content="5")
   inspect(viewport.cache.surface() is None, content="true")
 }
 

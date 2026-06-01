@@ -24,13 +24,6 @@ test "normalized_top clamps into 1..=max_top_for" {
 }
 
 ///|
-test "bottom_of is zero before the live area is drawn" {
-  inspect(bottom_of(top=0, height=0), content="0")
-  inspect(bottom_of(top=6, height=0), content="0")
-  inspect(bottom_of(top=6, height=3), content="8")
-}
-
-///|
 fn span_str(span : (Int, Int)) -> String {
   "\{span.0}..\{span.1}"
 }

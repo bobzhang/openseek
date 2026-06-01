@@ -63,17 +63,6 @@ fn normalized_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
 }
 
 ///|
-/// Bottom-most row of a live area at `top` spanning `height` rows, or 0 when the
-/// live area has not been drawn yet (`top`/`height` still 0).
-fn bottom_of(top~ : Int, height~ : Int) -> Int {
-  if top <= 0 || height <= 0 {
-    0
-  } else {
-    top + height - 1
-  }
-}
-
-///|
 /// The terminal-row interval `[top, bottom]` a redraw must repaint.
 ///
 /// It is the union of the new live area and the previous frame's footprint — so
