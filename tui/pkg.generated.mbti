@@ -2,7 +2,7 @@
 package "bobzhang/openseek/tui"
 
 import {
-  "moonbit-community/tty/color",
+  "bobzhang/openseek/tui/doc",
   "moonbitlang/core/debug",
 }
 
@@ -14,12 +14,6 @@ pub async fn[T] with_ui(config? : Config, async (Ui) -> T) -> T
 // Types and methods
 type Config
 pub fn Config::new(esc_timeout_ms? : Int, composer_max_rows? : Int) -> Self
-
-pub struct Doc {
-  // private fields
-}
-pub fn Doc::Doc(Array[Text]) -> Self
-pub fn Doc::plain(String) -> Self
 
 pub(all) enum Event {
   Queue(Input)
@@ -33,30 +27,12 @@ pub(all) enum Input {
   Command(String)
 } derive(Eq, @debug.Debug)
 
-pub struct Span {
-  // private fields
-}
-pub fn Span::Span(String, style? : Style) -> Self
-pub fn Span::plain(String) -> Self
-
-type Style derive(Eq)
-pub fn Style::default() -> Self
-pub fn Style::dim() -> Self
-pub fn Style::new(foreground? : @color.Color, background? : @color.Color, underline? : Bool) -> Self
-pub fn Style::prompt() -> Self
-
-pub struct Text {
-  // private fields
-}
-pub fn Text::Text(Array[Span]) -> Self
-pub fn Text::plain(String) -> Self
-
 pub struct ToolCall {
-  title : Text
+  title : @doc.Text
   status : ToolStatus?
-  details : Array[Text]
+  details : Array[@doc.Text]
 }
-pub fn ToolCall::ToolCall(Text, status? : ToolStatus, details? : Array[Text]) -> Self
+pub fn ToolCall::ToolCall(@doc.Text, status? : ToolStatus, details? : Array[@doc.Text]) -> Self
 
 pub(all) enum ToolStatus {
   InProgress
@@ -75,11 +51,11 @@ pub(all) enum TranscriptItem {
 
 type Ui
 pub async fn Ui::append_item(Self, TranscriptItem) -> Unit
-pub async fn Ui::append_transcript(Self, Doc) -> Unit
+pub async fn Ui::append_transcript(Self, @doc.Doc) -> Unit
 pub async fn Ui::read_event(Self) -> Event
-pub async fn Ui::set_activity(Self, Text?) -> Unit
+pub async fn Ui::set_activity(Self, @doc.Text?) -> Unit
 pub async fn Ui::set_queued_inputs(Self, Array[Input]) -> Unit
-pub async fn Ui::set_status(Self, Text) -> Unit
+pub async fn Ui::set_status(Self, @doc.Text) -> Unit
 
 // Type aliases
 

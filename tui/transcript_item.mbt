@@ -7,27 +7,27 @@ pub(all) enum ToolStatus {
 } derive(Eq, Debug)
 
 ///|
-fn ToolStatus::style(self : ToolStatus) -> Style {
+fn ToolStatus::style(self : ToolStatus) -> @doc.Style {
   match self {
-    InProgress => Style::dim()
-    Completed => Style::default()
-    Failed => Style::new(foreground=Basic(Red))
-    Declined => Style::dim()
+    InProgress => @doc.Style::dim()
+    Completed => @doc.Style::default()
+    Failed => @doc.Style::error()
+    Declined => @doc.Style::dim()
   }
 }
 
 ///|
 pub struct ToolCall {
-  title : Text
+  title : @doc.Text
   status : ToolStatus?
-  details : Array[Text]
+  details : Array[@doc.Text]
 }
 
 ///|
 pub fn ToolCall::ToolCall(
-  title : Text,
+  title : @doc.Text,
   status? : ToolStatus,
-  details? : Array[Text] = [],
+  details? : Array[@doc.Text] = [],
 ) -> ToolCall {
   { title, status, details: details.copy() }
 }
@@ -42,105 +42,74 @@ pub(all) enum TranscriptItem {
 }
 
 ///|
-fn Text::split_lines(self : Text) -> Array[Text] {
-  let lines : Array[Text] = []
-  let mut spans : Array[Span] = []
-  for span in self.spans {
-    let parts = span.text.split("\n").to_array()
-    for index in 0..<parts.length() {
-      if index > 0 {
-        lines.push(Text(spans))
-        spans = []
-      }
-      let part = parts[index].to_owned()
-      if part.length() > 0 {
-        spans.push(Span(part, style=span.style))
-      }
-    }
+/// Prefix each split line of `text` with a bullet/continuation marker in
+/// `style`, producing one `@doc.Text` block per line.
+fn bulleted_lines(
+  text : @doc.Text,
+  first~ : String,
+  rest~ : String,
+  style~ : @doc.Style,
+) -> Array[@doc.Text] {
+  let texts : Array[@doc.Text] = []
+  let lines = text.split_lines()
+  for index in 0..<lines.length() {
+    let marker = if index == 0 { first } else { rest }
+    texts.push(lines[index].prepend_span(@doc.Span(marker, style~)))
   }
-  lines.push(Text(spans))
-  lines
+  texts
 }
 
 ///|
-fn TranscriptItem::to_doc(self : TranscriptItem) -> Doc {
+fn TranscriptItem::to_doc(self : TranscriptItem) -> @doc.Doc {
   match self {
     Input(input) => input.to_doc()
-    Response(content) => {
-      let texts : Array[Text] = []
-      let lines = Text::plain(content).split_lines()
-      for index in 0..<lines.length() {
-        texts.push(
-          Text(
-            [
-              Span(if index == 0 { "• " } else { "  " }, style=Style::dim()),
-              ..lines[index].spans,
-            ],
-          ),
-        )
-      }
-      Doc(texts)
-    }
-    Reasoning(text) => {
-      let texts : Array[Text] = []
-      let lines = Text([Span(text, style=Style::dim())]).split_lines()
-      for index in 0..<lines.length() {
-        texts.push(
-          Text(
-            [
-              Span(if index == 0 { "• " } else { "  " }, style=Style::dim()),
-              ..lines[index].spans,
-            ],
-          ),
-        )
-      }
-      Doc(texts)
-    }
+    Response(content) =>
+      @doc.Doc(
+        bulleted_lines(
+          @doc.Text::plain(content),
+          first="• ",
+          rest="  ",
+          style=@doc.Style::dim(),
+        ),
+      )
+    Reasoning(text) =>
+      @doc.Doc(
+        bulleted_lines(
+          @doc.Text([@doc.Span(text, style=@doc.Style::dim())]),
+          first="• ",
+          rest="  ",
+          style=@doc.Style::dim(),
+        ),
+      )
     ToolCall(call) => {
       let bullet_style = call.status
         .map(status => status.style())
-        .unwrap_or(Style::dim())
-      let texts : Array[Text] = [
-        Text([Span("• ", style=bullet_style), ..call.title.spans]),
+        .unwrap_or(@doc.Style::dim())
+      let texts : Array[@doc.Text] = [
+        call.title.prepend_span(@doc.Span("• ", style=bullet_style)),
       ]
       let mut has_detail_line = false
       for detail in call.details {
         for line in detail.split_lines() {
+          let marker = if has_detail_line { "    " } else { "  └ " }
           texts.push(
-            Text(
-              [
-                Span(
-                  if has_detail_line {
-                    "    "
-                  } else {
-                    "  └ "
-                  },
-                  style=Style::dim(),
-                ),
-                ..line.spans,
-              ],
-            ),
+            line.prepend_span(@doc.Span(marker, style=@doc.Style::dim())),
           )
           has_detail_line = true
         }
       }
-      Doc(texts)
+      @doc.Doc(texts)
     }
     Error(message) => {
-      let texts : Array[Text] = []
-      let error_style = Style::new(foreground=Basic(Red))
-      let lines = Text([Span(message, style=error_style)]).split_lines()
-      for index in 0..<lines.length() {
-        texts.push(
-          Text(
-            [
-              Span(if index == 0 { "■ " } else { "  " }, style=error_style),
-              ..lines[index].spans,
-            ],
-          ),
-        )
-      }
-      Doc(texts)
+      let error_style = @doc.Style::error()
+      @doc.Doc(
+        bulleted_lines(
+          @doc.Text([@doc.Span(message, style=error_style)]),
+          first="■ ",
+          rest="  ",
+          style=error_style,
+        ),
+      )
     }
   }
 }

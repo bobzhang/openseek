@@ -25,7 +25,7 @@ async fn Ui::redraw(self : Self) -> Unit {
 /// Lay out one transcript item, prefixed with a blank separator row so items
 /// are visually spaced apart (matching the Codex TUI). The separator is plain,
 /// outside any item background block.
-fn Ui::item_rows(self : Self, doc : Doc) -> Array[@surface.Line] {
+fn Ui::item_rows(self : Self, doc : @doc.Doc) -> Array[@surface.Line] {
   let rows : Array[@surface.Line] = [@surface.Line::new([])]
   for row in doc.layout(width=self.viewport.cols()) {
     rows.push(row)
@@ -68,7 +68,7 @@ async fn Ui::enter(self : Self) -> Unit {
 }
 
 ///|
-pub async fn Ui::append_transcript(self : Self, doc : Doc) -> Unit {
+pub async fn Ui::append_transcript(self : Self, doc : @doc.Doc) -> Unit {
   self.commands.wait(() => {
     self.transcript.push(doc)
     self.viewport.refresh_size(self.tty)
@@ -83,7 +83,7 @@ pub async fn Ui::append_item(self : Self, item : TranscriptItem) -> Unit {
 }
 
 ///|
-pub async fn Ui::set_activity(self : Self, activity : Text?) -> Unit {
+pub async fn Ui::set_activity(self : Self, activity : @doc.Text?) -> Unit {
   self.commands.wait(() => {
     self.activity = activity
     self.redraw()
@@ -99,7 +99,7 @@ pub async fn Ui::set_queued_inputs(self : Self, inputs : Array[Input]) -> Unit {
 }
 
 ///|
-pub async fn Ui::set_status(self : Self, status : Text) -> Unit {
+pub async fn Ui::set_status(self : Self, status : @doc.Text) -> Unit {
   self.commands.wait(() => {
     self.status = status
     self.redraw()

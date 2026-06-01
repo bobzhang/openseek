@@ -15,7 +15,7 @@ fn Ui::current_history_entry(self : Self) -> @history.Entry {
 ///|
 async fn Ui::submit_current_input(self : Self) -> Input? {
   if self.composer.text().length() == 0 && self.composer.mode().is_input() {
-    self.notice = Some(dim_text("empty input"))
+    self.notice = Some(@doc.dim_text("empty input"))
     self.redraw()
     None
   } else {
@@ -214,7 +214,7 @@ async fn Ui::handle_key(self : Self, key : @tty/input.KeyEvent) -> Event? {
         self.redraw_after_text_change()
         None
       } else {
-        self.notice = Some(dim_text("ignored key"))
+        self.notice = Some(@doc.dim_text("ignored key"))
         self.redraw()
         None
       }
@@ -226,7 +226,9 @@ async fn Ui::handle_tty_event(self : Self, event : @tty.Event) -> Event? {
   match event {
     Input(Key(key)) => self.handle_key(key)
     Input(Unknown(bytes)) => {
-      self.notice = Some(dim_text("unknown input: \{bytes.length()} bytes"))
+      self.notice = Some(
+        @doc.dim_text("unknown input: \{bytes.length()} bytes"),
+      )
       self.redraw()
       None
     }

@@ -3,19 +3,19 @@ fn render_separator_line(cols~ : Int) -> @surface.Line {
   @surface.Line::new([
     @surface.Span::new(
       String::make(cols, '─'),
-      style=Style::dim().to_surface(),
+      style=@doc.Style::dim().to_surface(),
     ),
   ])
 }
 
 ///|
 fn composer_input_style() -> @surface.Style {
-  Style::default().to_surface()
+  @doc.Style::default().to_surface()
 }
 
 ///|
 fn composer_prompt_style() -> @surface.Style {
-  Style::prompt().to_surface()
+  @doc.Style::prompt().to_surface()
 }
 
 ///|
@@ -40,8 +40,8 @@ fn render_prompt_line(
 
 ///|
 fn render_status_line(
-  status : Text,
-  notice : Text?,
+  status : @doc.Text,
+  notice : @doc.Text?,
   cols~ : Int,
 ) -> @surface.Line {
   notice.unwrap_or(status).first_line(width=cols)
@@ -50,10 +50,10 @@ fn render_status_line(
 ///|
 fn render_composer_surface(
   composer : @composer.Model,
-  activity : Text?,
+  activity : @doc.Text?,
   queued_inputs : Array[Input],
-  status : Text,
-  notice : Text?,
+  status : @doc.Text,
+  notice : @doc.Text?,
   cols~ : Int,
 ) -> @surface.Surface {
   let rows : Array[@surface.Line] = []

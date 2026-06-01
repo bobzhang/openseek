@@ -1,3 +1,12 @@
+// Styled-text vocabulary for terminal output.
+//
+// `Doc`/`Text`/`Span`/`Style` describe *what* to render as logical, terminal-
+// agnostic blocks of styled text. They are laid out into physical
+// `@surface.Line`s (wrapping by display width, expanding tabs, dropping stray
+// control characters) only when a target width is known. The `tui` package
+// builds these from transcript and input state; the `render` package lays the
+// composer out from them. Nothing here performs IO.
+
 ///|
 /// A renderable document made of logical text blocks.
 ///
@@ -38,6 +47,38 @@ pub fn Text::Text(spans : Array[Span]) -> Text {
 /// Build a text block containing one unstyled span.
 pub fn Text::plain(text : String) -> Text {
   Text([Span::plain(text)])
+}
+
+///|
+/// A copy of this block with `span` inserted before its existing spans.
+///
+/// Used to attach a styled prefix (a bullet, a continuation indent) to existing
+/// content without exposing the span array.
+pub fn Text::prepend_span(self : Text, span : Span) -> Text {
+  Text([span, ..self.spans])
+}
+
+///|
+/// Split this block at newline characters into one block per source line,
+/// preserving each span's style. The returned blocks contain no newlines.
+pub fn Text::split_lines(self : Text) -> Array[Text] {
+  let lines : Array[Text] = []
+  let mut spans : Array[Span] = []
+  for span in self.spans {
+    let parts = span.text.split("\n").to_array()
+    for index in 0..<parts.length() {
+      if index > 0 {
+        lines.push(Text(spans))
+        spans = []
+      }
+      let part = parts[index].to_owned()
+      if part.length() > 0 {
+        spans.push(Span(part, style=span.style))
+      }
+    }
+  }
+  lines.push(Text(spans))
+  lines
 }
 
 ///|
@@ -104,7 +145,15 @@ pub fn Style::prompt() -> Style {
 }
 
 ///|
-fn Style::to_surface(self : Style) -> @surface.Style {
+/// Return the error style used for failed tool calls and error transcript items.
+pub fn Style::error() -> Style {
+  Style::new(foreground=Basic(Red))
+}
+
+///|
+/// Project this style onto the lower-level render-data style consumed by the
+/// terminal renderer.
+pub fn Style::to_surface(self : Style) -> @surface.Style {
   @surface.Style::new(
     foreground=self.foreground,
     background=self.background,
@@ -132,7 +181,9 @@ fn is_control_grapheme(grapheme : String) -> Bool {
 }
 
 ///|
-fn Text::wrap(self : Text, width~ : Int) -> Array[@surface.Line] {
+/// Lay this block out into physical rows for `width` columns, wrapping by
+/// display width, expanding tabs to the next stop, and dropping stray controls.
+pub fn Text::wrap(self : Text, width~ : Int) -> Array[@surface.Line] {
   let rows : Array[@surface.Line] = []
   let mut spans : Array[@surface.Span] = []
   let mut used = 0
@@ -175,7 +226,8 @@ fn Text::wrap(self : Text, width~ : Int) -> Array[@surface.Line] {
 }
 
 ///|
-fn Text::first_line(self : Text, width~ : Int) -> @surface.Line {
+/// The first wrapped row of this block for `width` columns, or an empty line.
+pub fn Text::first_line(self : Text, width~ : Int) -> @surface.Line {
   match self.wrap(width~).get(0) {
     Some(line) => line
     None => @surface.Line::new([])
@@ -183,7 +235,8 @@ fn Text::first_line(self : Text, width~ : Int) -> @surface.Line {
 }
 
 ///|
-fn Doc::layout(self : Doc, width~ : Int) -> Array[@surface.Line] {
+/// Lay every block out in order into physical rows for `width` columns.
+pub fn Doc::layout(self : Doc, width~ : Int) -> Array[@surface.Line] {
   let rows : Array[@surface.Line] = []
   for text in self.texts {
     for row in text.wrap(width~) {
@@ -194,6 +247,7 @@ fn Doc::layout(self : Doc, width~ : Int) -> Array[@surface.Line] {
 }
 
 ///|
-fn dim_text(text : String) -> Text {
+/// A one-block text in the subdued `Style::dim` style.
+pub fn dim_text(text : String) -> Text {
   Text([Span(text, style=Style::dim())])
 }

@@ -14,7 +14,7 @@ test "composer surface renders viewport rows and cursor" {
     @composer.Model::new(),
     None,
     [],
-    Text::plain("ready"),
+    @doc.Text::plain("ready"),
     None,
     cols=12,
   )
@@ -41,7 +41,7 @@ test "composer surface grows with multiline input up to max rows" {
     two_lines,
     None,
     [],
-    Text::plain(""),
+    @doc.Text::plain(""),
     None,
     cols=12,
   )
@@ -60,7 +60,7 @@ test "composer surface grows with multiline input up to max rows" {
     five_lines,
     None,
     [],
-    Text::plain(""),
+    @doc.Text::plain(""),
     None,
     cols=12,
   )
@@ -85,7 +85,7 @@ test "composer surface renders queued inputs above composer" {
     @composer.Model::new(),
     None,
     [Prompt("first"), Command("pwd")],
-    Text::plain("ready"),
+    @doc.Text::plain("ready"),
     None,
     cols=40,
   )
@@ -113,7 +113,7 @@ test "composer surface renders the input viewport" {
     @composer.Model::new(),
     None,
     [],
-    Text::plain("ready"),
+    @doc.Text::plain("ready"),
     None,
     cols=40,
   )
@@ -136,9 +136,9 @@ test "composer surface renders the input viewport" {
 test "composer surface renders activity above separator" {
   let surface = render_composer_surface(
     @composer.Model::new(),
-    Some(Text::plain("Working (0s • esc to interrupt)")),
+    Some(@doc.Text::plain("Working (0s • esc to interrupt)")),
     [],
-    Text::plain("gpt-5 · ~/repo · Context 100% left"),
+    @doc.Text::plain("gpt-5 · ~/repo · Context 100% left"),
     None,
     cols=50,
   )
@@ -162,8 +162,8 @@ test "composer surface notice overrides persistent status" {
     @composer.Model::new(),
     None,
     [],
-    Text::plain("gpt-5 · ~/repo"),
-    Some(Text::plain("ignored key")),
+    @doc.Text::plain("gpt-5 · ~/repo"),
+    Some(@doc.Text::plain("ignored key")),
     cols=40,
   )
   inspect(
@@ -178,53 +178,6 @@ test "queued input previews are copied by value" {
   let copied = queued.copy()
   queued.push(Prompt("second"))
   inspect(copied.length(), content="1")
-}
-
-///|
-test "doc layout wraps styled text by display width" {
-  inspect(
-    Doc::plain("abcdef").layout(width=3).map(line => line.text()).join("|"),
-    content="abc|def",
-  )
-  inspect(
-    Doc::plain("你好世界")
-    .layout(width=4)
-    .map(line => line.text())
-    .join("|"),
-    content="你好|世界",
-  )
-}
-
-///|
-test "wrap expands tabs to the next stop and drops other control chars" {
-  // `\t` expands to spaces up to the next 8-column tab stop so following text
-  // is not shoved to a terminal tab stop we never accounted for.
-  inspect(
-    Text::plain("a\tb").wrap(width=40).map(line => line.text()).join("|"),
-    content="a       b",
-  )
-  inspect(
-    Text::plain("abcdef\tg").wrap(width=40).map(line => line.text()).join("|"),
-    content="abcdef  g",
-  )
-  // `\r` and other C0 controls are dropped entirely (a raw `\r` would return
-  // the cursor to column 1 and overwrite the line).
-  inspect(
-    Text::plain("x\ry").wrap(width=40).map(line => line.text()).join("|"),
-    content="xy",
-  )
-}
-
-///|
-test "doc constructors copy mutable arrays" {
-  let spans = [Span::plain("a")]
-  let text = Text(spans)
-  spans.push(Span::plain("b"))
-  inspect(text.wrap(width=20).map(line => line.text()).join("|"), content="a")
-  let texts = [Text::plain("a")]
-  let doc = Doc(texts)
-  texts.push(Text::plain("b"))
-  inspect(doc.layout(width=20).map(line => line.text()).join("|"), content="a")
 }
 
 ///|
@@ -259,9 +212,9 @@ test "transcript response renders bullet and continuation prefix" {
 test "transcript tool call renders detail texts without caller-side joining" {
   inspect(
     TranscriptItem::ToolCall(
-      ToolCall::ToolCall(Text::plain("Ran moon test"), status=Completed, details=[
-        Text::plain("one"),
-        Text::plain("two\nthree"),
+      ToolCall::ToolCall(@doc.Text::plain("Ran moon test"), status=Completed, details=[
+        @doc.Text::plain("one"),
+        @doc.Text::plain("two\nthree"),
       ]),
     )
     .to_doc()

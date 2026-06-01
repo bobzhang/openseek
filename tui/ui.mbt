@@ -5,11 +5,11 @@ struct Ui {
   viewport : @viewport.Viewport
   composer : @composer.Model
   history : @history.History
-  transcript : Array[Doc]
-  mut activity : Text?
+  transcript : Array[@doc.Doc]
+  mut activity : @doc.Text?
   mut queued_inputs : Array[Input]
-  mut status : Text
-  mut notice : Text?
+  mut status : @doc.Text
+  mut notice : @doc.Text?
   mut entered : Bool
   commands : @task.Queue
   events : @aqueue.Queue[Result[Event, Error]]
@@ -27,7 +27,7 @@ fn Ui::new(tty : @tty.Tty, config : Config) -> Ui {
     transcript: [],
     activity: None,
     queued_inputs: [],
-    status: Text::plain(""),
+    status: @doc.Text::plain(""),
     notice: None,
     entered: false,
     commands: Queue(kind=Unbounded),

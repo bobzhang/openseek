@@ -28,9 +28,9 @@ fn compact_lines(source : String, limit : Int) -> Array[String] {
 }
 
 ///|
-fn detail_texts(lines : Array[String]) -> Array[@ui.Text] {
+fn detail_texts(lines : Array[String]) -> Array[@doc.Text] {
   [
-    for line in lines => @ui.Text::plain(line)
+    for line in lines => @doc.Text::plain(line)
   ]
 }
 
@@ -44,9 +44,9 @@ fn tool_status(is_error : Bool) -> @ui.ToolStatus {
 }
 
 ///|
-fn tool_title(result : @agent.ToolResultEvent) -> @ui.Text {
+fn tool_title(result : @agent.ToolResultEvent) -> @doc.Text {
   let label = if result.is_error { "Tool failed" } else { "Tool" }
-  @ui.Text::plain(label + " " + result.name)
+  @doc.Text::plain(label + " " + result.name)
 }
 
 ///|

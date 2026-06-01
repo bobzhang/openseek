@@ -1,12 +1,12 @@
 ///|
-fn format_status_segments(segments : Array[String]) -> @ui.Text {
-  let spans : Array[@ui.Span] = []
+fn format_status_segments(segments : Array[String]) -> @doc.Text {
+  let spans : Array[@doc.Span] = []
   for segment in segments {
     if segment.length() > 0 {
       if spans.length() > 0 {
-        spans.push(Span(" · ", style=@ui.Style::dim()))
+        spans.push(Span(" · ", style=@doc.Style::dim()))
       }
-      spans.push(@ui.Span::plain(segment))
+      spans.push(@doc.Span::plain(segment))
     }
   }
   Text(spans)
@@ -30,7 +30,7 @@ fn status_segments(state : State) -> Array[String] {
 }
 
 ///|
-fn format_status_bar_text(state : State) -> @ui.Text {
+fn format_status_bar_text(state : State) -> @doc.Text {
   format_status_segments(status_segments(state))
 }
 
@@ -66,7 +66,7 @@ fn elapsed_seconds(started_ms : Int64, now_ms : Int64) -> Int64 {
 }
 
 ///|
-fn format_activity_text(state : State) -> @ui.Text? {
+fn format_activity_text(state : State) -> @doc.Text? {
   let started_ms = match state.run {
     Idle => return None
     Running(started_ms) => started_ms
@@ -82,8 +82,8 @@ fn format_activity_text(state : State) -> @ui.Text? {
   }
   Some(
     Text([
-      @ui.Span::plain("Working"),
-      Span(details.to_string(), style=@ui.Style::dim()),
+      @doc.Span::plain("Working"),
+      Span(details.to_string(), style=@doc.Style::dim()),
     ]),
   )
 }

@@ -26,25 +26,25 @@ fn input_preview_text(input : Input) -> String {
 }
 
 ///|
-fn Input::to_doc(self : Input) -> Doc {
+fn Input::to_doc(self : Input) -> @doc.Doc {
   let source = @text.split_lines(input_text(self))
-  let texts : Array[Text] = []
+  let texts : Array[@doc.Text] = []
   for index in 0..<source.length() {
     texts.push(
-      Text([
-        Span(
+      @doc.Text([
+        @doc.Span(
           if index == 0 {
             input_prefix(self)
           } else {
             "  "
           },
-          style=Style::prompt(),
+          style=@doc.Style::prompt(),
         ),
-        Span::plain(@text.line_at(source, index)),
+        @doc.Span::plain(@text.line_at(source, index)),
       ]),
     )
   }
-  Doc(texts)
+  @doc.Doc(texts)
 }
 
 ///|
@@ -56,14 +56,14 @@ fn render_queued_input_line(
   let marker = "  \{index + 1}. "
   let prefix = input_prefix(input)
   @surface.Line::new([
-    @surface.Span::new(marker, style=Style::dim().to_surface()),
-    @surface.Span::new(prefix, style=Style::prompt().to_surface()),
+    @surface.Span::new(marker, style=@doc.Style::dim().to_surface()),
+    @surface.Span::new(prefix, style=@doc.Style::prompt().to_surface()),
     @surface.Span::new(
       @text.truncate_line(
         input_preview_text(input),
         cols - @text.display_width(marker) - @text.display_width(prefix),
       ),
-      style=Style::dim().to_surface(),
+      style=@doc.Style::dim().to_surface(),
     ),
   ])
 }
@@ -79,7 +79,7 @@ fn render_queued_inputs(
       @surface.Line::new([
         @surface.Span::new(
           @text.truncate_line("queued follow-up inputs:", cols),
-          style=Style::dim().to_surface(),
+          style=@doc.Style::dim().to_surface(),
         ),
       ]),
     )

@@ -1,0 +1,8 @@
+import {
+  "bobzhang/openseek/tui/internal/surface",
+  "kawaz/grapheme",
+  "rami3l/unicodewidth",
+  "moonbit-community/tty/color" @tty/color,
+}
+
+supported_targets = "native"
