@@ -24,6 +24,19 @@ fn is_newline_grapheme(grapheme : StringView) -> Bool {
 }
 
 ///|
+/// Whether a grapheme counts as part of a word for word-wise cursor motion.
+///
+/// Classification looks at the grapheme's leading scalar: ASCII letters and
+/// digits, and any non-ASCII scalar (CJK, accented letters, emoji), are word
+/// characters; ASCII spaces and punctuation are delimiters.
+fn is_word_grapheme(grapheme : StringView) -> Bool {
+  match grapheme {
+    [c, ..] => c.is_ascii_alphabetic() || c.is_ascii_digit() || !c.is_ascii()
+    [] => false
+  }
+}
+
+///|
 fn line_display_width(lines : Array[String], line : Int) -> Int {
   @text.display_width(@text.line_at(lines, line))
 }
@@ -659,6 +672,38 @@ pub fn Model::move_left(self : Model) -> Unit {
 ///|
 pub fn Model::move_right(self : Model) -> Unit {
   self.move_to_cursor(self.cursor + 1, None)
+}
+
+///|
+/// Move the cursor to the end of the next word: skip any leading delimiters,
+/// then the run of word graphemes. Matches readline's `forward-word` (Alt-F).
+pub fn Model::move_word_right(self : Model) -> Unit {
+  let graphemes = @grapheme.graphemes(self.text)
+  let length = graphemes.length()
+  let mut cursor = self.cursor
+  while cursor < length && !is_word_grapheme(graphemes[cursor]) {
+    cursor = cursor + 1
+  }
+  while cursor < length && is_word_grapheme(graphemes[cursor]) {
+    cursor = cursor + 1
+  }
+  self.move_to_cursor(cursor, None)
+}
+
+///|
+/// Move the cursor to the start of the previous word: skip any trailing
+/// delimiters, then the run of word graphemes. Matches readline's `backward-word`
+/// (Alt-B).
+pub fn Model::move_word_left(self : Model) -> Unit {
+  let graphemes = @grapheme.graphemes(self.text)
+  let mut cursor = self.cursor
+  while cursor > 0 && !is_word_grapheme(graphemes[cursor - 1]) {
+    cursor = cursor - 1
+  }
+  while cursor > 0 && is_word_grapheme(graphemes[cursor - 1]) {
+    cursor = cursor - 1
+  }
+  self.move_to_cursor(cursor, None)
 }
 
 ///|

@@ -121,8 +121,23 @@ async fn Ui::handle_key(self : Self, key : @tty/input.KeyEvent) -> Event? {
       self.redraw_after_cursor_move()
       None
     }
+    Char('f') if key.modifiers.alt() => {
+      self.composer.move_word_right()
+      self.redraw_after_cursor_move()
+      None
+    }
+    Char('b') if key.modifiers.alt() => {
+      self.composer.move_word_left()
+      self.redraw_after_cursor_move()
+      None
+    }
     Char('h') if key.modifiers.ctrl() => {
       self.composer.delete_before()
+      self.redraw_after_text_change()
+      None
+    }
+    Enter if key.modifiers.shift() => {
+      self.composer.insert("\n")
       self.redraw_after_text_change()
       None
     }

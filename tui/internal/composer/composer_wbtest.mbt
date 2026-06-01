@@ -194,6 +194,39 @@ test "vertical movement steps through wrapped rows of one logical line" {
 }
 
 ///|
+test "word motion steps across word boundaries" {
+  let model = Model::from_text("foo bar.baz")
+  model.move_home()
+  inspect(model.cursor, content="0")
+  model.move_word_right()
+  inspect(model.cursor, content="3")
+  model.move_word_right()
+  inspect(model.cursor, content="7")
+  model.move_word_right()
+  inspect(model.cursor, content="11")
+  model.move_word_right()
+  inspect(model.cursor, content="11")
+  model.move_word_left()
+  inspect(model.cursor, content="8")
+  model.move_word_left()
+  inspect(model.cursor, content="4")
+  model.move_word_left()
+  inspect(model.cursor, content="0")
+  model.move_word_left()
+  inspect(model.cursor, content="0")
+}
+
+///|
+test "word motion treats non-ascii runs as words" {
+  let model = Model::from_text("你好 world")
+  model.move_home()
+  model.move_word_right()
+  inspect(model.cursor, content="2")
+  model.move_word_right()
+  inspect(model.cursor, content="8")
+}
+
+///|
 test "model replace restores text mode and cursor" {
   let shell = Model::new()
   shell.insert_user_text("!pwd")

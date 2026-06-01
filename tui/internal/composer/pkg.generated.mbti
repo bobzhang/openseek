@@ -29,6 +29,8 @@ pub fn Model::move_home(Self) -> Unit
 pub fn Model::move_left(Self) -> Unit
 pub fn Model::move_right(Self) -> Unit
 pub fn Model::move_vertical(Self, Int) -> Unit
+pub fn Model::move_word_left(Self) -> Unit
+pub fn Model::move_word_right(Self) -> Unit
 pub fn Model::new(max_text_rows? : Int) -> Self
 pub fn Model::replace(Self, String, mode~ : Mode) -> Unit
 pub fn Model::reset(Self) -> Unit

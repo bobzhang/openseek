@@ -109,5 +109,13 @@ pub async fn[T] with_ui(
   let tty = @tty.Tty::open()
   defer tty.close()
   let ui = Ui::new(tty, config)
-  tty.with_raw_mode() <| () => { run_ui_session(ui, body) }
+  // Request the kitty keyboard protocol's "disambiguate" level so modified keys
+  // the legacy encoding cannot represent — Shift+Enter, Alt+F/Alt+B — are
+  // reported as distinct CSI-u events. We deliberately avoid the higher levels
+  // that also report key-release events, which would double-fire every key.
+  // Terminals without kitty support ignore the request and degrade gracefully.
+  let flags = @tty.KeyboardEnhancementFlags::disambiguate()
+  tty.with_raw_mode() <| () => {
+    tty.with_keyboard_enhancements(flags) <| () => { run_ui_session(ui, body) }
+  }
 }
