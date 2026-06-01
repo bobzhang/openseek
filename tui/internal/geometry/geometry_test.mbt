@@ -41,8 +41,8 @@ test "calculate_redraw_span unions the old and new live-area footprints" {
   inspect(
     span_str(
       calculate_redraw_span(
-        { top: 8, height: 3 },
-        { top: 8, height: 3 },
+        Geometry::new(top=8, height=3),
+        Geometry::new(top=8, height=3),
         screen_rows=12,
         old_content_unknown=false,
       ),
@@ -53,8 +53,8 @@ test "calculate_redraw_span unions the old and new live-area footprints" {
   inspect(
     span_str(
       calculate_redraw_span(
-        { top: 8, height: 3 },
-        { top: 8, height: 2 },
+        Geometry::new(top=8, height=3),
+        Geometry::new(top=8, height=2),
         screen_rows=12,
         old_content_unknown=false,
       ),
@@ -66,8 +66,8 @@ test "calculate_redraw_span unions the old and new live-area footprints" {
   inspect(
     span_str(
       calculate_redraw_span(
-        { top: 6, height: 3 },
-        { top: 8, height: 3 },
+        Geometry::new(top=6, height=3),
+        Geometry::new(top=8, height=3),
         screen_rows=12,
         old_content_unknown=false,
       ),
@@ -78,8 +78,8 @@ test "calculate_redraw_span unions the old and new live-area footprints" {
   inspect(
     span_str(
       calculate_redraw_span(
-        { top: 8, height: 3 },
-        { top: 2, height: 4 },
+        Geometry::new(top=8, height=3),
+        Geometry::new(top=2, height=4),
         screen_rows=12,
         old_content_unknown=true,
       ),
