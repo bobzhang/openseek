@@ -20,5 +20,5 @@ preferred_target = "native"
 
 rule(
   name: "md_to_mbt_string",
-  command: "sh scripts/md_to_mbt_string.sh $input $output",
+  command: "moon run --target native scripts/md_to_mbt_string.mbtx -- \"$input\" \"$output\"",
 )
