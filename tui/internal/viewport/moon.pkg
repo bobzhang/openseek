@@ -1,4 +1,5 @@
 import {
+  "bobzhang/openseek/tui/internal/geometry",
   "bobzhang/openseek/tui/internal/layout",
   "bobzhang/openseek/tui/internal/surface",
   "moonbit-community/tty",

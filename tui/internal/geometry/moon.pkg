@@ -1,0 +1,5 @@
+import {
+  "bobzhang/openseek/tui/internal/layout",
+}
+
+supported_targets = "native"

@@ -17,14 +17,50 @@
 // still leaves `height` rows above `size.rows()`.
 //
 // Every function here is total and side-effect free: results are clamped into a
-// drawable range so the rest of `viewport.mbt` never has to re-validate
-// geometry. They take an already-normalized `@layout.TerminalSize`, so screen
-// dimensions are always positive; only the app-chosen `top`/`height` are clamped
-// here.
+// drawable range so the viewport never has to re-validate geometry. They take an
+// already-normalized `@layout.TerminalSize`, so screen dimensions are always
+// positive; only the app-chosen `top`/`height` are clamped here.
+
+///|
+/// A rectangular block of terminal rows: 1-based start row `top` and row count
+/// `height` (so `bottom = top + height - 1`).
+///
+/// Used for the live area's current placement — which additionally satisfies the
+/// viewport invariant `1 <= height <= size.rows` and `1 <= top <= max_top` — and
+/// for a previous frame's footprint, which is the same shape but may predate a
+/// resize. The type itself enforces no invariant; it is just a row region.
+struct Geometry {
+  top : Int
+  height : Int
+}
+
+///|
+/// Build a row region from a start row and a height.
+pub fn Geometry::new(top~ : Int, height~ : Int) -> Geometry {
+  { top, height }
+}
+
+///|
+/// 1-based start row of the region.
+pub fn Geometry::top(self : Geometry) -> Int {
+  self.top
+}
+
+///|
+/// Number of rows the region spans.
+pub fn Geometry::height(self : Geometry) -> Int {
+  self.height
+}
+
+///|
+/// Bottom-most row the region occupies (`top + height - 1`).
+pub fn Geometry::bottom(self : Geometry) -> Int {
+  self.top + self.height - 1
+}
 
 ///|
 /// Clamp a desired live-area height into `1 ..= size.rows()`.
-fn clamp_height(size : @layout.TerminalSize, height : Int) -> Int {
+pub fn clamp_height(size : @layout.TerminalSize, height : Int) -> Int {
   height.clamp(min=1, max=size.rows())
 }
 
@@ -43,7 +79,7 @@ fn clamp_height(size : @layout.TerminalSize, height : Int) -> Int {
 /// - 1 = 24` sits exactly on the screen bottom. `height` is pre-clamped to
 /// `<= rows` by `clamp_height`, so the bound is always `>= 1` and the clamp
 /// range stays non-empty.
-fn calculate_max_top(size : @layout.TerminalSize, height : Int) -> Int {
+pub fn calculate_max_top(size : @layout.TerminalSize, height : Int) -> Int {
   let top = size.rows() - height + 1
   if top < 1 {
     1
@@ -58,7 +94,7 @@ fn calculate_max_top(size : @layout.TerminalSize, height : Int) -> Int {
 /// The desired `top` comes from outside terminal geometry — the queried cursor
 /// row on the first draw, or the previous frame's `top` afterwards — so it can
 /// sit too low to fit the live area below it; clamping raises it just enough.
-fn clamp_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
+pub fn clamp_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
   top.clamp(min=1, max=calculate_max_top(size, height))
 }
 
@@ -70,7 +106,7 @@ fn clamp_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
 /// (`old_content_unknown`), the interval extends to the screen bottom to clear
 /// any stale rows below it. A result with `top > bottom` means nothing needs
 /// repainting.
-fn calculate_redraw_span(
+pub fn calculate_redraw_span(
   old : Geometry,
   new : Geometry,
   screen_rows~ : Int,

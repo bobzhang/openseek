@@ -41,11 +41,15 @@ fn FrameCache::surface(self : FrameCache) -> @surface.Surface? {
 /// `Drawn` reuses the viewport's live `top` because the cached surface has not
 /// moved since it was drawn. `Stale` returns the remembered footprint. `Fresh`
 /// has nothing on screen, so the first redraw clears nothing.
-fn FrameCache::footprint(self : FrameCache, live_top~ : Int) -> Geometry? {
+fn FrameCache::footprint(
+  self : FrameCache,
+  live_top~ : Int,
+) -> @geometry.Geometry? {
   match self {
     Fresh => None
-    Drawn(surface) => Some({ top: live_top, height: surface.height() })
-    Stale(top~, height~) => Some({ top, height })
+    Drawn(surface) =>
+      Some(@geometry.Geometry::new(top=live_top, height=surface.height()))
+    Stale(top~, height~) => Some(@geometry.Geometry::new(top~, height~))
   }
 }
 

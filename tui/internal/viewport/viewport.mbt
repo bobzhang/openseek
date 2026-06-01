@@ -20,31 +20,12 @@ const EnableAutoWrap : String = "\u001b[?7h"
 const ClearScreenAndScrollback : String = "\u001b[r\u001b[0m\u001b[H\u001b[2J\u001b[3J\u001b[H"
 
 ///|
-/// A rectangular block of terminal rows: 1-based start row `top` and row count
-/// `height` (so `bottom = top + height - 1`).
-///
-/// Used for the live area's current placement — which additionally satisfies the
-/// viewport invariant `1 <= height <= size.rows` and `1 <= top <= max_top` — and
-/// for a previous frame's footprint (see `FrameCache`), which is the same shape
-/// but may predate a resize.
-priv struct Geometry {
-  top : Int
-  height : Int
-}
-
-///|
-/// Bottom-most row the live area occupies (`top + height - 1`).
-fn Geometry::bottom(self : Geometry) -> Int {
-  self.top + self.height - 1
-}
-
-///|
 struct Viewport {
   mut size : @layout.TerminalSize
   // The live area's placement, or `None` before it has been drawn. Matching
   // readline's model, output can be written before the input area exists; the
   // first redraw anchors the area at the current terminal cursor and sets this.
-  mut geometry : Geometry?
+  mut geometry : @geometry.Geometry?
   // Diff/clear state for the live area: the last drawn surface (for row diffing)
   // or, once dropped, the footprint it left behind (for clearing). See
   // `FrameCache`.
@@ -61,7 +42,7 @@ pub fn Viewport::new(height~ : Int) -> Viewport {
 /// The live area's start row, or 0 before it has been placed.
 fn Viewport::top(self : Viewport) -> Int {
   match self.geometry {
-    Some(g) => g.top
+    Some(g) => g.top()
     None => 0
   }
 }
@@ -70,7 +51,7 @@ fn Viewport::top(self : Viewport) -> Int {
 /// The live area's height in rows, or 0 before it has been placed.
 fn Viewport::height(self : Viewport) -> Int {
   match self.geometry {
-    Some(g) => g.height
+    Some(g) => g.height()
     None => 0
   }
 }
@@ -99,15 +80,15 @@ fn Viewport::set_size(self : Viewport, size : @layout.TerminalSize) -> Unit {
   // Re-clamp an already-placed live area against the new dimensions so it stays
   // on screen; before the first draw there is nothing to place.
   if self.geometry is Some(g) {
-    self.set_geometry(top=g.top, height=g.height)
+    self.set_geometry(top=g.top(), height=g.height())
   }
 }
 
 ///|
 fn Viewport::set_geometry(self : Viewport, top~ : Int, height~ : Int) -> Unit {
-  let height = clamp_height(self.size, height)
-  let top = clamp_top(self.size, height, top)
-  self.geometry = Some({ top, height })
+  let height = @geometry.clamp_height(self.size, height)
+  let top = @geometry.clamp_top(self.size, height, top)
+  self.geometry = Some(@geometry.Geometry::new(top~, height~))
 }
 
 ///|
@@ -234,7 +215,7 @@ async fn with_scroll_region(
 /// above the new (higher) live-area top.
 async fn scroll_scrollback_up_for_growth(
   tty : @tty.Tty,
-  old : Geometry,
+  old : @geometry.Geometry,
   new_top~ : Int,
 ) -> Unit {
   // old:                                     new:
@@ -252,8 +233,8 @@ async fn scroll_scrollback_up_for_growth(
   // Here we need to make rooms for 2 rows. Since top is 1-based line number from the top
   // of the terminal, we can obtain the number of rows to make by old.top - new_top.
   //
-  let rows = old.top - new_top
-  let scrollback_bottom = old.top - 1
+  let rows = old.top() - new_top
+  let scrollback_bottom = old.top() - 1
   if rows > 0 && scrollback_bottom >= 1 {
     with_scroll_region(tty, 1, scrollback_bottom, () => {
       tty.set_cursor_position(scrollback_bottom, 1)
@@ -293,15 +274,15 @@ async fn Viewport::redraw_placed_surface_rows(
   self : Viewport,
   tty : @tty.Tty,
   old_frame : @surface.Surface?,
-  old : Geometry,
+  old : @geometry.Geometry,
   new_frame~ : @surface.Surface,
   new_top~ : Int,
 ) -> Unit {
   let new_height = new_frame.height()
   let old_content_unknown = old_frame is None
-  let (draw_top, draw_bottom) = calculate_redraw_span(
+  let (draw_top, draw_bottom) = @geometry.calculate_redraw_span(
     old,
-    { top: new_top, height: new_height },
+    @geometry.Geometry::new(top=new_top, height=new_height),
     screen_rows=self.size.rows(),
     old_content_unknown~,
   )
@@ -309,7 +290,7 @@ async fn Viewport::redraw_placed_surface_rows(
   let mut rows_changed = false
   for row in draw_top..<=draw_bottom {
     let old_line = if old_frame is Some(frame) {
-      line_at_terminal_row(frame, row~, top=old.top, height=old.height)
+      line_at_terminal_row(frame, row~, top=old.top(), height=old.height())
     } else {
       None
     }
@@ -328,7 +309,7 @@ async fn Viewport::redraw_placed_surface_rows(
     }
   }
   let cursor_changed = if old_frame is Some(frame) {
-    !same_terminal_cursor(frame, new_frame, top=old.top, other_top=new_top)
+    !same_terminal_cursor(frame, new_frame, top=old.top(), other_top=new_top)
   } else {
     true
   }
@@ -407,11 +388,11 @@ pub async fn Viewport::enter(
   surface : @surface.Surface,
   timeout_ms~ : Int,
 ) -> Unit {
-  let height = clamp_height(self.size, surface.height())
+  let height = @geometry.clamp_height(self.size, surface.height())
   let top = if tty.query_cursor_position(timeout_ms~) is Some(position) {
-    clamp_top(self.size, height, position.row)
+    @geometry.clamp_top(self.size, height, position.row)
   } else {
-    calculate_max_top(self.size, height)
+    @geometry.calculate_max_top(self.size, height)
   }
   self.set_geometry(top~, height~)
   let surface = surface.with_max_rows(self.height())
@@ -436,8 +417,8 @@ pub async fn Viewport::redraw(
   // rows) must be read before set_geometry moves the live area.
   let old_frame = self.cache.surface()
   guard self.cache.footprint(live_top=self.top()) is Some(old) else { return }
-  let height = clamp_height(self.size, surface.height())
-  let top = clamp_top(self.size, height, self.top())
+  let height = @geometry.clamp_height(self.size, surface.height())
+  let top = @geometry.clamp_top(self.size, height, self.top())
   self.set_geometry(top~, height~)
   let surface = surface.with_max_rows(self.height())
   let new_top = self.top()

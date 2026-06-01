@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/tui/internal/geometry"
+
+import {
+  "bobzhang/openseek/tui/internal/layout",
+}
+
+// Values
+pub fn calculate_max_top(@layout.TerminalSize, Int) -> Int
+
+pub fn calculate_redraw_span(Geometry, Geometry, screen_rows~ : Int, old_content_unknown~ : Bool) -> (Int, Int)
+
+pub fn clamp_height(@layout.TerminalSize, Int) -> Int
+
+pub fn clamp_top(@layout.TerminalSize, Int, Int) -> Int
+
+// Errors
+
+// Types and methods
+type Geometry
+pub fn Geometry::bottom(Self) -> Int
+pub fn Geometry::height(Self) -> Int
+pub fn Geometry::new(top~ : Int, height~ : Int) -> Self
+pub fn Geometry::top(Self) -> Int
+
+// Type aliases
+
+// Traits
