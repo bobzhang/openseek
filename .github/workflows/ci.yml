@@ -7,17 +7,72 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu
+            os: ubuntu-latest
+            kind: full
+          - name: windows-native
+            os: windows-latest
+            kind: windows-native
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set up MoonBit
+      - name: Set up MoonBit (Unix)
+        if: runner.os != 'Windows'
         run: |
           curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Set up MoonBit (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+          irm https://cli.moonbitlang.com/install/powershell.ps1 | iex
+          "$env:USERPROFILE\.moon\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Set up MSVC C toolchain
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsPath) {
+            throw "Visual Studio C++ tools not found"
+          }
+          $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+          $envLines = cmd /c "`"$vcvars`" && set"
+          if ($LASTEXITCODE -ne 0) {
+            throw "vcvars64.bat failed with exit code $LASTEXITCODE"
+          }
+          $envLines | ForEach-Object {
+            if ($_ -match "^(.*?)=(.*)$") {
+              $name = $matches[1]
+              $value = $matches[2]
+              if ($name -ieq "Path") {
+                $value.Split(";") | Where-Object { $_ } | Out-File -FilePath $env:GITHUB_PATH -Append
+              } else {
+                "$name=$value" | Out-File -FilePath $env:GITHUB_ENV -Append
+              }
+            }
+          }
+          $clang = (Get-Command clang.exe -All | Where-Object { $_.Source -notlike "*mingw64*" } | Select-Object -First 1).Source
+          if (-not $clang) {
+            throw "clang.exe not found"
+          }
+          $shim = Join-Path $env:RUNNER_TEMP "moon-cc-shim"
+          New-Item -ItemType Directory -Force $shim | Out-Null
+          "@echo off`r`n`"$clang`" %*" | Out-File -FilePath (Join-Path $shim "cc.cmd") -Encoding ascii
+          "@echo off`r`n`"$clang`" %*" | Out-File -FilePath (Join-Path $shim "cc.bat") -Encoding ascii
+          $shim | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Update MoonBit dependencies
         run: |
@@ -25,10 +80,16 @@ jobs:
           moon update
 
       - name: Check formatting
+        if: matrix.kind == 'full'
         run: moon fmt --check
 
       - name: Check (deny warnings)
         run: moon check --deny-warn
 
       - name: Test
+        if: matrix.kind == 'full'
         run: moon test
+
+      - name: Build native
+        if: matrix.kind == 'windows-native'
+        run: moon build --target native
