@@ -36,28 +36,34 @@ fn Ui::new(tty : @tty.Tty, config : Config) -> Ui {
 }
 
 ///|
+/// Run `body` with the live UI entered: draw the first frame up front and always
+/// restore the terminal afterwards, on both the success and error paths. Enter
+/// and leave run on the command queue so they serialize with redraws.
+async fn[T] Ui::with_entered(self : Self, body : async () -> T) -> T {
+  self.commands.wait(() => self.enter())
+  try body() catch {
+    error => {
+      self.commands.wait(() => self.leave())
+      raise error
+    }
+  } noraise {
+    value => {
+      self.commands.wait(() => self.leave())
+      value
+    }
+  }
+}
+
+///|
 async fn[T] run_ui_session(ui : Ui, body : async (Ui) -> T) -> T {
   @async.with_task_group() <| g => {
     g.spawn_bg(no_wait=true) <| () => { ui.commands.run() }
-    ui.commands.wait(() => {
-      ui.enter()
-      // The first redraw may query cursor position through tty input. Do it
-      // before the reader task starts so the reader cannot consume that
-      // response as a normal key event.
-      ui.redraw()
+    ui.with_entered(() => {
+      // `enter` drew the first frame, querying cursor position through tty input.
+      // Start the reader only now, so it cannot consume that response as a key.
+      g.spawn_bg(no_wait=true) <| () => { ui.read_tty_events() }
+      body(ui)
     })
-    g.spawn_bg(no_wait=true) <| () => { ui.read_tty_events() }
-    try body(ui) catch {
-      error => {
-        ui.commands.wait(() => ui.leave())
-        raise error
-      }
-    } noraise {
-      value => {
-        ui.commands.wait(() => ui.leave())
-        value
-      }
-    }
   }
 }
 

@@ -12,11 +12,7 @@ fn Ui::composer_surface(self : Ui) -> @surface.Surface {
 
 ///|
 async fn Ui::redraw_frame(self : Ui) -> Unit {
-  self.viewport.draw(
-    self.tty,
-    self.composer_surface(),
-    timeout_ms=self.config.esc_timeout_ms,
-  )
+  self.viewport.redraw(self.tty, self.composer_surface())
 }
 
 ///|
@@ -59,8 +55,15 @@ async fn Ui::redraw_after_resize(self : Self) -> Unit {
 }
 
 ///|
-fn Ui::enter(self : Self) -> Unit {
+/// Anchor and draw the first frame. The viewport's `enter` queries the terminal
+/// cursor, so this must run before the tty reader starts (see `with_entered`).
+async fn Ui::enter(self : Self) -> Unit {
   self.viewport.refresh_size(self.tty)
+  self.viewport.enter(
+    self.tty,
+    self.composer_surface(),
+    timeout_ms=self.config.esc_timeout_ms,
+  )
   self.entered = true
 }
 

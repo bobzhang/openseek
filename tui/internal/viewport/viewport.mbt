@@ -111,42 +111,6 @@ fn Viewport::set_geometry(self : Viewport, top~ : Int, height~ : Int) -> Unit {
 }
 
 ///|
-/// Choose and store where the live area sits for `surface` at the current size.
-///
-/// The height is the surface's, clamped to the screen. The start row depends on
-/// whether the area has been placed yet:
-///
-///   - First draw (`geometry is None`): anchor at the row the cursor currently
-///     sits on — where the shell left it when the app started — so committed
-///     output above stays put. When the cursor is near the bottom (say row 23 of
-///     24 while the area needs 7 rows) it leaves too little room beneath it, so
-///     `clamp_top` raises `top` to `calculate_max_top` (here 18) and
-///     `scroll_scrollback_up_for_growth` later pushes the rows above into
-///     scrollback. When the cursor position can't be queried, assume the worst
-///     case (no room below) and start at `calculate_max_top`.
-///   - Redraw: hold the previous `top`. Readline-style ownership grows into the
-///     blank rows below first and only pushes upward once the taller area would
-///     overflow the screen bottom; shrinking holds `top` too. Clamping the old
-///     top to `calculate_max_top` is exactly that — it keeps `top` put while the area
-///     fits and raises it by just enough when it would not.
-async fn Viewport::place(
-  self : Viewport,
-  tty : @tty.Tty,
-  surface~ : @surface.Surface,
-  timeout_ms~ : Int,
-) -> Unit {
-  let height = clamp_height(self.size, surface.height())
-  let top = if self.geometry is Some(_) {
-    clamp_top(self.size, height, self.top())
-  } else if tty.query_cursor_position(timeout_ms~) is Some(position) {
-    clamp_top(self.size, height, position.row)
-  } else {
-    calculate_max_top(self.size, height)
-  }
-  self.set_geometry(top~, height~)
-}
-
-///|
 pub fn Viewport::refresh_size(self : Viewport, tty : @tty.Tty) -> Unit {
   let size = try tty.window_size() catch {
     _ => @layout.TerminalSize::default()
@@ -408,17 +372,22 @@ pub async fn Viewport::replay_with_rows_before(
 }
 
 ///|
-pub async fn Viewport::draw(
+/// Place the geometry at `top`/`height` and paint `surface` into it, diffing
+/// against the previous frame and scrolling committed rows into scrollback if
+/// the area grew. The shared tail of `enter` and `redraw`, which differ only in
+/// how they choose `top`.
+async fn Viewport::paint(
   self : Viewport,
   tty : @tty.Tty,
   surface : @surface.Surface,
-  timeout_ms~ : Int,
+  top~ : Int,
+  height~ : Int,
 ) -> Unit {
   // The previous frame's surface (for row diffing) and footprint (for clearing
-  // vacated rows) must be read before `place` overwrites the geometry.
+  // vacated rows) must be read before set_geometry overwrites the geometry.
   let old_frame = self.cache.surface()
   let old = self.cache.footprint(live_top=self.top())
-  self.place(tty, surface~, timeout_ms~)
+  self.set_geometry(top~, height~)
   let surface = surface.with_max_rows(self.height())
   let new_top = self.top()
   scroll_scrollback_up_for_growth(tty, old, new_top~)
@@ -430,6 +399,51 @@ pub async fn Viewport::draw(
     new_top~,
   )
   self.cache = Drawn(surface)
+}
+
+///|
+/// Draw `surface` as the live area for the first time, anchoring it at the
+/// terminal cursor.
+///
+/// Anchor at the row the cursor currently sits on — where the shell left it when
+/// the app started — so committed output above stays put. When the cursor is
+/// near the bottom (say row 23 of 24 while the area needs 7 rows) it leaves too
+/// little room beneath it, so `clamp_top` raises `top` to `calculate_max_top`
+/// (here 18) and `scroll_scrollback_up_for_growth` (inside `paint`) pushes the
+/// rows above into scrollback. When the cursor position can't be queried, assume
+/// the worst case (no room below) and start at `calculate_max_top`. The cursor
+/// query is the one blocking read, hence `timeout_ms`.
+pub async fn Viewport::enter(
+  self : Viewport,
+  tty : @tty.Tty,
+  surface : @surface.Surface,
+  timeout_ms~ : Int,
+) -> Unit {
+  let height = clamp_height(self.size, surface.height())
+  let top = if tty.query_cursor_position(timeout_ms~) is Some(position) {
+    clamp_top(self.size, height, position.row)
+  } else {
+    calculate_max_top(self.size, height)
+  }
+  self.paint(tty, surface, top~, height~)
+}
+
+///|
+/// Redraw `surface` in place, holding the previous `top`.
+///
+/// Readline-style ownership: growth uses the blank rows below first and only
+/// pushes upward once the taller area would overflow the screen bottom;
+/// shrinking holds `top` too. Clamping the old top to `calculate_max_top` is
+/// exactly that — it keeps `top` put while the area fits and raises it by just
+/// enough when it would not. Must be called after `enter` has placed the area.
+pub async fn Viewport::redraw(
+  self : Viewport,
+  tty : @tty.Tty,
+  surface : @surface.Surface,
+) -> Unit {
+  let height = clamp_height(self.size, surface.height())
+  let top = clamp_top(self.size, height, self.top())
+  self.paint(tty, surface, top~, height~)
 }
 
 ///|
