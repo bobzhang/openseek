@@ -1,0 +1,26 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/tui/internal/viewport"
+
+import {
+  "bobzhang/openseek/tui/internal/surface",
+  "moonbit-community/tty",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type Viewport
+pub fn Viewport::cols(Self) -> Int
+pub async fn Viewport::enter(Self, @tty.Tty, @surface.Surface, timeout_ms~ : Int) -> Unit
+pub async fn Viewport::insert_before(Self, @tty.Tty, Array[@surface.Line]) -> Unit
+pub async fn Viewport::leave(Self, @tty.Tty) -> Unit
+pub fn Viewport::new() -> Self
+pub async fn Viewport::redraw(Self, @tty.Tty, @surface.Surface) -> Unit
+pub fn Viewport::refresh_size(Self, @tty.Tty) -> Unit
+pub async fn Viewport::replay_with_rows_before(Self, @tty.Tty, Array[@surface.Line], @surface.Surface) -> Unit
+
+// Type aliases
+
+// Traits
