@@ -51,7 +51,7 @@ pub fn grapheme_count(text : String) -> Int {
 pub fn grapheme_slice(text : String, start : Int, end : Int) -> String {
   let graphemes = @grapheme.graphemes(text)
   let length = graphemes.length()
-  let start = @clamp.int(start, min=0, max=length)
-  let end = @clamp.int(end, min=start, max=length)
+  let start = start.clamp(min=0, max=length)
+  let end = end.clamp(min=start, max=length)
   graphemes[start:end].to_string()
 }

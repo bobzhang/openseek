@@ -232,7 +232,7 @@ pub fn Mode::is_shell(self : Mode) -> Bool {
 
 ///|
 fn cursor_point_for(text : String, cursor : Int) -> CursorPoint {
-  let target = @clamp.int(cursor, min=0, max=@text.grapheme_count(text))
+  let target = cursor.clamp(min=0, max=@text.grapheme_count(text))
   let mut index = 0
   let mut line = 0
   let mut grapheme_column = 0
@@ -253,7 +253,7 @@ fn cursor_point_for(text : String, cursor : Int) -> CursorPoint {
 
 ///|
 fn line_start_cursor(text : String, line : Int) -> Int {
-  let line = @clamp.int(line, min=0, max=line_count(text) - 1)
+  let line = line.clamp(min=0, max=line_count(text) - 1)
   if line == 0 {
     0
   } else {
@@ -279,12 +279,8 @@ fn cursor_for_line_display_column(
   display_column : Int,
 ) -> Int {
   let lines = @text.split_lines(text)
-  let line = @clamp.int(line, min=0, max=lines.length() - 1)
-  let target = @clamp.int(
-    display_column,
-    min=0,
-    max=line_display_width(lines, line),
-  )
+  let line = line.clamp(min=0, max=lines.length() - 1)
+  let target = display_column.clamp(min=0, max=line_display_width(lines, line))
   let mut grapheme_column = 0
   let mut width = 0
   for grapheme in @grapheme.grapheme_iter(@text.line_at(lines, line)) {
@@ -331,7 +327,7 @@ fn make_model(
   content_width? : Int = DefaultContentWidth,
 ) -> Model {
   let max_text_rows = normalize_max_text_rows(max_text_rows)
-  let cursor = @clamp.int(cursor, min=0, max=@text.grapheme_count(text))
+  let cursor = cursor.clamp(min=0, max=@text.grapheme_count(text))
   let content_width = if content_width < 1 { 1 } else { content_width }
   let model = {
     text,
@@ -514,7 +510,7 @@ fn Model::set_state(
   mode? : Mode = Input,
   at_wrap_end? : Bool = false,
 ) -> Unit {
-  let cursor = @clamp.int(cursor, min=0, max=@text.grapheme_count(text))
+  let cursor = cursor.clamp(min=0, max=@text.grapheme_count(text))
   self.text = text
   self.cursor = cursor
   self.preferred_column = preferred_column
@@ -539,13 +535,13 @@ fn Model::reclamp_view(self : Model) -> Unit {
     self.cursor_point(),
     self.at_wrap_end,
   )
-  let mut start = @clamp.int(self.view_start, min=0, max=max_start)
+  let mut start = self.view_start.clamp(min=0, max=max_start)
   if cursor_index < start {
     start = cursor_index
   } else if cursor_index >= start + visible {
     start = cursor_index - visible + 1
   }
-  self.view_start = @clamp.int(start, min=0, max=max_start)
+  self.view_start = start.clamp(min=0, max=max_start)
 }
 
 ///|
@@ -574,8 +570,8 @@ fn Model::move_to_cursor(
 ///|
 fn Model::delete_range(self : Model, start : Int, end : Int) -> Unit {
   let length = @text.grapheme_count(self.text)
-  let start = @clamp.int(start, min=0, max=length)
-  let end = @clamp.int(end, min=start, max=length)
+  let start = start.clamp(min=0, max=length)
+  let end = end.clamp(min=start, max=length)
   let prefix = @text.grapheme_slice(self.text, 0, start)
   let suffix = @text.grapheme_slice(self.text, end, length)
   self.set_state(prefix + suffix, start, None, self.view_start, mode=self.mode)
@@ -771,7 +767,7 @@ pub fn Model::move_vertical(self : Model, delta : Int) -> Unit {
     @text.grapheme_slice(rows[index].text, 0, offset),
   )
   let preferred = self.preferred_column.unwrap_or(current_column)
-  let target_index = @clamp.int(index + delta, min=0, max=rows.length() - 1)
+  let target_index = (index + delta).clamp(min=0, max=rows.length() - 1)
   let target = rows[target_index]
   let target_offset = place_display_column(target.text, preferred)
   let cursor = line_start_cursor(self.text, target.logical_line) +

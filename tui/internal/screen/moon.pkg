@@ -1,7 +1,6 @@
 import {
   "kawaz/grapheme",
   "rami3l/unicodewidth",
-  "bobzhang/openseek/tui/internal/clamp",
   "moonbit-community/tty",
   "moonbit-community/tty/color",
 }

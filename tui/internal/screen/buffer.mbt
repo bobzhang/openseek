@@ -62,8 +62,8 @@ fn Buffer::set_cell(self : Buffer, row : Int, col : Int, cell : Cell) -> Unit {
 ///|
 pub fn Buffer::set_cursor(self : Buffer, row~ : Int, col~ : Int) -> Unit {
   self.cursor = {
-    row: @clamp.int(row, min=0, max=self.rows - 1),
-    col: @clamp.int(col, min=0, max=self.cols - 1),
+    row: row.clamp(min=0, max=self.rows - 1),
+    col: col.clamp(min=0, max=self.cols - 1),
   }
 }
 

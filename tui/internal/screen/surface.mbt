@@ -31,7 +31,7 @@ struct Surface {
 
 ///|
 fn normalize_index(value : Int, max_value : Int) -> Int {
-  @clamp.int(value, min=0, max=max_value)
+  value.clamp(min=0, max=max_value)
 }
 
 ///|

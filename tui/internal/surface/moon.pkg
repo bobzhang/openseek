@@ -1,5 +1,4 @@
 import {
-  "bobzhang/openseek/tui/internal/clamp",
   "moonbit-community/tty/color",
 }
 

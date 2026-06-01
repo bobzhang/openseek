@@ -25,7 +25,7 @@
 ///|
 /// Clamp a desired live-area height into `1 ..= size.rows()`.
 fn normalized_height(size : @layout.TerminalSize, height : Int) -> Int {
-  @clamp.int(height, min=1, max=size.rows())
+  height.clamp(min=1, max=size.rows())
 }
 
 ///|
@@ -59,7 +59,7 @@ fn max_top_for(size : @layout.TerminalSize, height : Int) -> Int {
 /// row on the first draw, or the previous frame's `top` afterwards — so it can
 /// sit too low to fit the live area below it; clamping raises it just enough.
 fn normalized_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
-  @clamp.int(top, min=1, max=max_top_for(size, height))
+  top.clamp(min=1, max=max_top_for(size, height))
 }
 
 ///|

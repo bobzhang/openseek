@@ -150,7 +150,7 @@ fn normalize_surface_width(width : Int) -> Int {
 
 ///|
 fn normalize_surface_index(value : Int, max_value : Int) -> Int {
-  @clamp.int(value, min=0, max=max_value)
+  value.clamp(min=0, max=max_value)
 }
 
 ///|

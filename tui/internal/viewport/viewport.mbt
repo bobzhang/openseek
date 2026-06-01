@@ -86,7 +86,7 @@ fn Viewport::set_size(self : Viewport, size : @layout.TerminalSize) -> Unit {
 
 ///|
 fn Viewport::set_top(self : Viewport, top : Int) -> Unit {
-  self.top = @clamp.int(top, min=1, max=self.max_top())
+  self.top = top.clamp(min=1, max=self.max_top())
 }
 
 ///|
