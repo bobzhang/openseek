@@ -13,7 +13,7 @@
 //
 // `top` is the terminal row where the live area starts, `height` how many rows
 // it occupies, and `bottom = top + height - 1`. The live area must fit on
-// screen, so `top` is clamped to `max_top_for` — the lowest start row that
+// screen, so `top` is clamped to `calculate_max_top` — the lowest start row that
 // still leaves `height` rows above `size.rows()`.
 //
 // Every function here is total and side-effect free: results are clamped into a
@@ -24,7 +24,7 @@
 
 ///|
 /// Clamp a desired live-area height into `1 ..= size.rows()`.
-fn normalized_height(size : @layout.TerminalSize, height : Int) -> Int {
+fn clamp_height(size : @layout.TerminalSize, height : Int) -> Int {
   height.clamp(min=1, max=size.rows())
 }
 
@@ -41,9 +41,9 @@ fn normalized_height(size : @layout.TerminalSize, height : Int) -> Int {
 /// Clamping `top` to this bound therefore guarantees the whole `height`-row
 /// block is visible — e.g. `rows=24, height=7` gives `18`, and `bottom = 18 + 7
 /// - 1 = 24` sits exactly on the screen bottom. `height` is pre-clamped to
-/// `<= rows` by `normalized_height`, so the bound is always `>= 1` and the clamp
+/// `<= rows` by `clamp_height`, so the bound is always `>= 1` and the clamp
 /// range stays non-empty.
-fn max_top_for(size : @layout.TerminalSize, height : Int) -> Int {
+fn calculate_max_top(size : @layout.TerminalSize, height : Int) -> Int {
   let top = size.rows() - height + 1
   if top < 1 {
     1
@@ -53,13 +53,13 @@ fn max_top_for(size : @layout.TerminalSize, height : Int) -> Int {
 }
 
 ///|
-/// Clamp an app-desired `top` into `1 ..= max_top_for(size, height)`.
+/// Clamp an app-desired `top` into `1 ..= calculate_max_top(size, height)`.
 ///
 /// The desired `top` comes from outside terminal geometry — the queried cursor
 /// row on the first draw, or the previous frame's `top` afterwards — so it can
 /// sit too low to fit the live area below it; clamping raises it just enough.
-fn normalized_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
-  top.clamp(min=1, max=max_top_for(size, height))
+fn clamp_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
+  top.clamp(min=1, max=calculate_max_top(size, height))
 }
 
 ///|
@@ -71,7 +71,7 @@ fn normalized_top(size : @layout.TerminalSize, height : Int, top : Int) -> Int {
 /// content was dropped (`old_content_unknown`), the interval extends to the
 /// screen bottom to clear any stale rows below it. A result with `top > bottom`
 /// means nothing needs repainting.
-fn redraw_span(
+fn calculate_redraw_span(
   old : Geometry?,
   new : Geometry,
   screen_rows~ : Int,

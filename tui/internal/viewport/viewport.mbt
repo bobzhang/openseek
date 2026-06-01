@@ -105,8 +105,8 @@ fn Viewport::set_size(self : Viewport, size : @layout.TerminalSize) -> Unit {
 
 ///|
 fn Viewport::set_geometry(self : Viewport, top~ : Int, height~ : Int) -> Unit {
-  let height = normalized_height(self.size, height)
-  let top = normalized_top(self.size, height, top)
+  let height = clamp_height(self.size, height)
+  let top = clamp_top(self.size, height, top)
   self.geometry = Some({ top, height })
 }
 
@@ -120,14 +120,14 @@ fn Viewport::set_geometry(self : Viewport, top~ : Int, height~ : Int) -> Unit {
 ///     sits on — where the shell left it when the app started — so committed
 ///     output above stays put. When the cursor is near the bottom (say row 23 of
 ///     24 while the area needs 7 rows) it leaves too little room beneath it, so
-///     `normalized_top` raises `top` to `max_top_for` (here 18) and
+///     `clamp_top` raises `top` to `calculate_max_top` (here 18) and
 ///     `scroll_scrollback_up_for_growth` later pushes the rows above into
 ///     scrollback. When the cursor position can't be queried, assume the worst
-///     case (no room below) and start at `max_top_for`.
+///     case (no room below) and start at `calculate_max_top`.
 ///   - Redraw: hold the previous `top`. Readline-style ownership grows into the
 ///     blank rows below first and only pushes upward once the taller area would
 ///     overflow the screen bottom; shrinking holds `top` too. Clamping the old
-///     top to `max_top_for` is exactly that — it keeps `top` put while the area
+///     top to `calculate_max_top` is exactly that — it keeps `top` put while the area
 ///     fits and raises it by just enough when it would not.
 async fn Viewport::place(
   self : Viewport,
@@ -135,13 +135,13 @@ async fn Viewport::place(
   surface~ : @surface.Surface,
   timeout_ms~ : Int,
 ) -> Unit {
-  let height = normalized_height(self.size, surface.height())
+  let height = clamp_height(self.size, surface.height())
   let top = if self.geometry is Some(_) {
-    normalized_top(self.size, height, self.top())
+    clamp_top(self.size, height, self.top())
   } else if tty.query_cursor_position(timeout_ms~) is Some(position) {
-    normalized_top(self.size, height, position.row)
+    clamp_top(self.size, height, position.row)
   } else {
-    max_top_for(self.size, height)
+    calculate_max_top(self.size, height)
   }
   self.set_geometry(top~, height~)
 }
@@ -311,7 +311,7 @@ async fn Viewport::draw_placed_surface_rows(
 ) -> Unit {
   let new_height = new_frame.height()
   let old_content_unknown = old is Some(_) && old_frame is None
-  let (draw_top, draw_bottom) = redraw_span(
+  let (draw_top, draw_bottom) = calculate_redraw_span(
     old,
     { top: new_top, height: new_height },
     screen_rows=self.size.rows(),
