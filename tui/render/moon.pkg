@@ -1,0 +1,8 @@
+import {
+  "bobzhang/openseek/tui/doc",
+  "bobzhang/openseek/tui/internal/composer",
+  "bobzhang/openseek/tui/internal/surface",
+  "bobzhang/openseek/tui/internal/text",
+}
+
+supported_targets = "native"

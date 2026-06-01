@@ -3,6 +3,7 @@ import {
   "moonbitlang/async/io" @async/io,
   "moonbitlang/async/aqueue",
   "bobzhang/openseek/tui/doc",
+  "bobzhang/openseek/tui/render",
   "bobzhang/openseek/tui/internal/composer",
   "bobzhang/openseek/tui/internal/history",
   "bobzhang/openseek/tui/internal/surface",

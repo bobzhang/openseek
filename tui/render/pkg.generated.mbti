@@ -1,0 +1,19 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/openseek/tui/render"
+
+import {
+  "bobzhang/openseek/tui/doc",
+  "bobzhang/openseek/tui/internal/composer",
+  "bobzhang/openseek/tui/internal/surface",
+}
+
+// Values
+pub fn composer_surface(@composer.Model, @doc.Text?, Array[@surface.Line], @doc.Text, @doc.Text?, cols~ : Int) -> @surface.Surface
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

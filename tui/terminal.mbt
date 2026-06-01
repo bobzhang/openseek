@@ -1,12 +1,13 @@
 ///|
 fn Ui::composer_surface(self : Ui) -> @surface.Surface {
-  render_composer_surface(
+  let cols = self.viewport.cols()
+  @render.composer_surface(
     self.composer,
     self.activity,
-    self.queued_inputs,
+    render_queued_inputs(self.queued_inputs, cols~),
     self.status,
     self.notice,
-    cols=self.viewport.cols(),
+    cols~,
   )
 }
 
