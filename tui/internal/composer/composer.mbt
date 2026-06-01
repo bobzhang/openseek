@@ -736,14 +736,24 @@ pub fn Model::kill_before(self : Model) -> Unit {
 pub fn Model::kill_after(self : Model) -> Unit {
   let point = self.cursor_point()
   let lines = @text.split_lines(self.text)
-  self.delete_range(
-    self.cursor,
-    cursor_for_line_display_column(
-      self.text,
-      point.line,
-      line_display_width(lines, point.line),
-    ),
+  let line_end = cursor_for_line_display_column(
+    self.text,
+    point.line,
+    line_display_width(lines, point.line),
   )
+  if self.cursor < line_end {
+    // Kill to the end of the current line's content.
+    self.delete_range(self.cursor, line_end)
+  } else if self.cursor < @text.grapheme_count(self.text) {
+    // Already at the end of the line (an empty line is its own end): kill the
+    // line break so the next line joins up, matching readline/emacs kill-line.
+    self.delete_range(self.cursor, self.cursor + 1)
+  } else if self.cursor > 0 &&
+    line_start_cursor(self.text, point.line) == self.cursor {
+    // A trailing empty line has no forward content to kill; remove the line
+    // itself by deleting the line break that precedes it.
+    self.delete_range(self.cursor - 1, self.cursor)
+  }
 }
 
 ///|

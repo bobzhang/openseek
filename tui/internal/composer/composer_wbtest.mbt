@@ -104,6 +104,29 @@ test "model kills before and after cursor within logical line" {
 }
 
 ///|
+test "kill after removes empty lines and joins lines" {
+  // On an empty middle line, kill-line removes the forward line break.
+  let middle = Model::from_text("ab\n\ncd")
+  middle.move_vertical(-1)
+  inspect(middle.cursor_point().line, content="1")
+  inspect(middle.cursor_point().grapheme_column, content="0")
+  middle.kill_after()
+  inspect(middle.text, content="ab\ncd")
+  // At the end of a non-empty line it likewise joins the next line up.
+  let joined = Model::from_text("ab\ncd")
+  joined.move_vertical(-1)
+  joined.move_end()
+  joined.kill_after()
+  inspect(joined.text, content="abcd")
+  // A trailing empty line (e.g. from an extra Shift+Enter) has nothing forward,
+  // so kill-line removes the empty line by deleting the preceding break.
+  let trailing = Model::from_text("ab\n")
+  inspect(trailing.cursor_point().line, content="1")
+  trailing.kill_after()
+  inspect(trailing.text, content="ab")
+}
+
+///|
 test "model kill keeps shell mode active" {
   let shell = Model::new()
   shell.insert_user_text("!pwd")
