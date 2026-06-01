@@ -120,7 +120,9 @@ fn flash_prompt() -> String {
     #|## Checked Error Handling
     #|
     #|- MoonBit uses checked raising functions.
-    #|- Declare raising functions with `raise` or a concrete error type.
+    #|- Declare ordinary failing helpers with plain `raise`. Use a concrete error
+    #|  type such as `raise ParseError` only when callers need to match exact error
+    #|  variants.
     #|- Use checked errors for ordinary parser and CLI control flow. Keep the normal
     #|  return type as the successful value, for example `Json raise`, not a wrapper
     #|  around both success and failure.
@@ -141,6 +143,10 @@ fn flash_prompt() -> String {
     #|  boundary, such as a CLI path that needs custom stderr text.
     #|- For custom errors, use `suberror`, not `type Error`, `trait Error`, or
     #|  `type TomlError`.
+    #|- For rare typed-error APIs, declare a `suberror` and mark the function with
+    #|  that exact effect, for example `raise ParseError`. A function marked
+    #|  `raise ParseError` may only let `ParseError` escape; if it calls a broader
+    #|  raising function, catch that error and translate it.
     #|- To propagate an error from a raising call, call it normally from a function
     #|  marked with `raise`.
     #|- In success tests, call raising functions directly; if they raise, the test
@@ -152,7 +158,9 @@ fn flash_prompt() -> String {
     #|- For invalid-input behavior, prefer a CLI acceptance probe or a simple public
     #|  behavior check unless the task specifically asks for exact error values.
     #|- If `fn main` calls a raising function, write `fn main raise { ... }`.
-    #|- `async fn main` already can raise; do not write `async fn main raise`.
+    #|- `async fn` can raise by default. Do not write `async fn main raise`.
+    #|- If an async helper must not raise, mark it `noraise`, for example
+    #|  `async fn helper() -> Unit noraise { ... }`.
     #|- In `async fn main`, prefer calling raising functions directly and let the
     #|  top-level report errors. If you catch for custom user-facing text, print the
     #|  message and return immediately; do not encode failure as `Json::null`, `()`,
@@ -171,11 +179,13 @@ fn flash_prompt() -> String {
     #|} derive(Debug)
     #|
     #|///|
-    #|fn parse_count(text : String) -> Int raise {
+    #|fn parse_count(text : String) -> Int raise ParseError {
     #|  if text.trim().is_empty() {
     #|    raise ParseError::InvalidInput("empty input")
     #|  }
-    #|  let n : Int = @string.from_str(text)
+    #|  let n : Int = @string.from_str(text) catch {
+    #|    _ => raise ParseError::InvalidInput("not an integer")
+    #|  }
     #|  n
     #|}
     #|
