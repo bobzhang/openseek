@@ -8,8 +8,8 @@ fn submitted_input(text : String, mode : @composer.Mode) -> Input {
 }
 
 ///|
-fn Ui::current_history_entry(self : Self) -> HistoryEntry {
-  HistoryEntry::new(self.composer.text(), self.composer.mode())
+fn Ui::current_history_entry(self : Self) -> @history.Entry {
+  @history.Entry::new(self.composer.text(), self.composer.mode())
 }
 
 ///|
@@ -21,7 +21,7 @@ async fn Ui::submit_current_input(self : Self) -> Input? {
   } else {
     let text = self.composer.text()
     let mode = self.composer.mode()
-    self.history.push(HistoryEntry::new(text, mode))
+    self.history.push(@history.Entry::new(text, mode))
     self.composer.reset()
     self.notice = None
     self.redraw()
@@ -53,7 +53,7 @@ async fn Ui::redraw_after_history_recall(self : Self) -> Unit {
 ///|
 async fn Ui::recall_previous_history(self : Self) -> Unit {
   if self.history.previous(self.current_history_entry()) is Some(entry) {
-    self.composer.replace(entry.text, mode=entry.mode)
+    self.composer.replace(entry.text(), mode=entry.mode())
     self.redraw_after_history_recall()
   }
 }
@@ -61,7 +61,7 @@ async fn Ui::recall_previous_history(self : Self) -> Unit {
 ///|
 async fn Ui::recall_next_history(self : Self) -> Unit {
   if self.history.next() is Some(entry) {
-    self.composer.replace(entry.text, mode=entry.mode)
+    self.composer.replace(entry.text(), mode=entry.mode())
     self.redraw_after_history_recall()
   }
 }

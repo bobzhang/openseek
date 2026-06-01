@@ -1,0 +1,5 @@
+import {
+  "bobzhang/openseek/tui/internal/composer",
+}
+
+supported_targets = "native"

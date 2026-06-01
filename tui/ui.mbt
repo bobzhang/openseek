@@ -4,7 +4,7 @@ struct Ui {
   config : Config
   viewport : @viewport.Viewport
   composer : @composer.Model
-  history : History
+  history : @history.History
   transcript : Array[Doc]
   mut activity : Text?
   mut queued_inputs : Array[Input]
@@ -23,7 +23,7 @@ fn Ui::new(tty : @tty.Tty, config : Config) -> Ui {
     config,
     viewport: @viewport.Viewport::new(height=1),
     composer,
-    history: History::new(),
+    history: @history.History::new(),
     transcript: [],
     activity: None,
     queued_inputs: [],

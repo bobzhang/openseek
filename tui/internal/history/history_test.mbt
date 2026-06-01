@@ -1,36 +1,36 @@
 ///|
-fn prompt_entry(text : String) -> HistoryEntry {
+fn prompt_entry(text : String) -> Entry {
   let composer = @composer.Model::new()
-  HistoryEntry::new(text, composer.mode())
+  Entry::new(text, composer.mode())
 }
 
 ///|
-fn shell_entry(text : String) -> HistoryEntry {
+fn shell_entry(text : String) -> Entry {
   let composer = @composer.Model::new()
   composer.insert_user_text("!" + text)
-  HistoryEntry::new(composer.text(), composer.mode())
+  Entry::new(composer.text(), composer.mode())
 }
 
 ///|
-fn recalled_text(entry : HistoryEntry?) -> String {
+fn recalled_text(entry : Entry?) -> String {
   match entry {
-    Some(entry) => entry.text
+    Some(entry) => entry.text()
     None => "<none>"
   }
 }
 
 ///|
-fn recalled_is_shell(entry : HistoryEntry?) -> Bool {
+fn recalled_is_shell(entry : Entry?) -> Bool {
   match entry {
-    Some(entry) => entry.mode.is_shell()
+    Some(entry) => entry.mode().is_shell()
     None => false
   }
 }
 
 ///|
-fn recalled_is_input(entry : HistoryEntry?) -> Bool {
+fn recalled_is_input(entry : Entry?) -> Bool {
   match entry {
-    Some(entry) => entry.mode.is_input()
+    Some(entry) => entry.mode().is_input()
     None => false
   }
 }
