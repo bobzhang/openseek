@@ -4,9 +4,10 @@ async fn main {
   let api_key = value(matches, "api-key")
   let model = @deepseek.Model::parse(value(matches, "model"))
   let max_steps = max_steps(matches)
+  let log_format = log_format(matches)
   let system_prompt_text = configured_system_prompt(matches, model)
   let task = values(matches, "task").join(" ")
-  @agent.run(api_key, model, task, max_steps~, system_prompt_text~)
+  @agent.run(api_key, model, task, max_steps~, system_prompt_text~, log_format~)
 }
 
 ///|
@@ -35,6 +36,13 @@ fn cli_command() -> @argparse.Command {
         env="OPENSEEK_MAX_STEPS",
         default_values=["1000"],
         about="Maximum number of agent loop steps before stopping.",
+      ),
+      OptionArg(
+        "log-format",
+        long="log-format",
+        env="OPENSEEK_LOG_FORMAT",
+        default_values=["jsonl"],
+        about="Log format: jsonl or text.",
       ),
       OptionArg(
         "system-prompt-file",
@@ -85,6 +93,11 @@ fn max_steps(matches : @argparse.Matches) -> Int raise {
 }
 
 ///|
+fn log_format(matches : @argparse.Matches) -> @agent.LogFormat raise {
+  @agent.LogFormat::parse(value(matches, "log-format"))
+}
+
+///|
 async fn configured_system_prompt(
   matches : @argparse.Matches,
   model : @deepseek.Model,
@@ -125,12 +138,14 @@ test "cli parses env backed options and task" {
     "DEEPSEEK": "test-key",
     "DEEPSEEK_MODEL": "deepseek-v4-pro",
     "OPENSEEK_MAX_STEPS": "120",
+    "OPENSEEK_LOG_FORMAT": "text",
     "OPENSEEK_SYSTEM_PROMPT_FILE": "/tmp/prompt-a.md",
     "OPENSEEK_SYSTEM_PROMPT_ADDENDUM_FILE": "/tmp/prompt-b.md",
   })
   assert_eq(value(parsed, "api-key"), "test-key")
   assert_eq(value(parsed, "model"), "deepseek-v4-pro")
   assert_eq(max_steps(parsed), 120)
+  assert_eq(log_format(parsed).to_string(), "text")
   assert_eq(value(parsed, "system-prompt-file"), "/tmp/prompt-a.md")
   assert_eq(value(parsed, "system-prompt-addendum-file"), "/tmp/prompt-b.md")
   assert_eq(values(parsed, "task").join(" "), "write MoonBit")
@@ -143,6 +158,7 @@ test "cli defaults model and max steps" {
   })
   assert_eq(value(parsed, "model"), "deepseek-v4-pro")
   assert_eq(max_steps(parsed), 1000)
+  assert_eq(log_format(parsed).to_string(), "jsonl")
 }
 
 ///|
@@ -152,6 +168,15 @@ test "cli parses max steps option" {
     env={ "DEEPSEEK": "test-key" },
   )
   assert_eq(max_steps(parsed), 25)
+}
+
+///|
+test "cli parses log format option" {
+  let parsed = cli_command().parse(
+    argv=["--log-format", "text", "write", "MoonBit"],
+    env={ "DEEPSEEK": "test-key" },
+  )
+  assert_eq(log_format(parsed).to_string(), "text")
 }
 
 ///|
@@ -186,6 +211,21 @@ async test "configured system prompt defaults by model" {
   assert_false(
     configured_system_prompt(parsed, V4Pro).contains("DeepSeek V4 Flash"),
   )
+}
+
+///|
+test "cli rejects invalid log format" {
+  let parsed = cli_command().parse(
+    argv=["--log-format", "xml", "write", "MoonBit"],
+    env={ "DEEPSEEK": "test-key" },
+  )
+  let _ = log_format(parsed) catch {
+    error => {
+      assert_true("\{error}".contains("log format must be text or jsonl"))
+      return
+    }
+  }
+  fail("invalid log format parsed")
 }
 
 ///|

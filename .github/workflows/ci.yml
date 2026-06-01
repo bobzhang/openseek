@@ -32,3 +32,31 @@ jobs:
 
       - name: Test
         run: moon test
+
+  cram-realworld:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DEEPSEEK: ${{ secrets.DEEPSEEK }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up MoonBit nightly
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- nightly
+          echo "$HOME/.moon/bin" >> $GITHUB_PATH
+
+      - name: Update MoonBit dependencies
+        run: |
+          moon version --all
+          moon update
+
+      - name: Run real-world cram tests
+        run: |
+          work_dir="$(mktemp -d)"
+          if [ -n "$DEEPSEEK" ]; then
+            printf 'export DEEPSEEK=%q\n' "$DEEPSEEK" > "$work_dir/.deepseek_env"
+          fi
+          moon cram test --work-directory "$work_dir" tests/cram/realworld.md

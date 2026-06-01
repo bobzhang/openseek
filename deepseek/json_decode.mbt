@@ -150,20 +150,14 @@ pub impl FromJson for ChatResponse with fn from_json(
   }
   let tool_calls = match message_fields {
     { "tool_calls": Array(raw_tool_calls), .. } => {
-      let tool_call_results = [
-        for index, tool_call in raw_tool_calls => {
-          try? FromJson::from_json(
+      let decoded : Array[ToolCall] = []
+      for index, tool_call in raw_tool_calls {
+        decoded.push(
+          FromJson::from_json(
             tool_call,
             message_path.add_key("tool_calls").add_index(index),
-          )
-        }
-      ]
-      let decoded : Array[ToolCall] = []
-      for result in tool_call_results {
-        match result {
-          Ok(tool_call) => decoded.push(tool_call)
-          Err(error) => raise error
-        }
+          ),
+        )
       }
       decoded
     }
